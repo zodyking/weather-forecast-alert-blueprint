@@ -1,19 +1,13 @@
 blueprint:
   name: Weather — Forecast TTS (AI Optional)
   description: |
-    Speak a concise, TV-weatherman-style forecast to one or more speakers at a schedule you choose.
-    
-    ## What it does
-    - Pulls **daily** and **hourly** data from your chosen Weather entity.
-    - Builds a natural summary: current conditions, temperature, humidity, today's high/low, and (if likely) **rain/snow timing** with percentage and daypart.
-    - (Optional) Sends that summary to an **AI Task** entity to rewrite in a lively, professional style **without changing any facts**.
-    - Speaks the result via your chosen **TTS engine** to one or more **media players**, with an optional pre-announcement volume set.
-    - Runs on a **time pattern** (e.g., every hour at :03) and only within the **time window** and **weekdays** you select.
+    Speak a concise, TV-weatherman-style forecast to one or more speakers on a schedule.
+    Pulls daily + hourly forecasts, mentions likely rain/snow with daypart and %, and (optionally) rewrites the message via an AI Task without changing facts.
 
-    ## Tips
-    - Use **Piper** (tts.piper) for fast, local TTS and set the **Voice** input (e.g., `en_US-carlin-high`).
-    - Tune the **Precipitation Threshold** and **Hours Ahead** to control when it talks about rain/snow.
-    - If you don’t want AI rewrite, just turn **Use AI Rewrite** off—then it speaks the raw crafted message.
+    Tips:
+    • Works best with a weather provider that supports `weather.get_forecasts` (daily + hourly).
+    • Set “Precipitation probability threshold” and “Hours ahead” to control if/when precip is mentioned.
+    • If you turn off “Use AI rewrite,” the raw crafted message is spoken.
 
   domain: automation
   source_url: https://github.com/zodyking/oil-diffuser-blueprint/blob/main/oil-diffuser-ai.yaml
@@ -21,7 +15,10 @@ blueprint:
   input:
     weather_entity:
       name: Weather entity (with forecast)
-      description: Select your weather entity that supports `weather.get_forecasts`.
+      description: |
+        Select the weather entity that this blueprint reads from. It **must** support the `weather.get_forecasts` service
+        for both **daily** and **hourly** data (the blueprint calls each). Examples: `weather.home`, `weather.forecast_home`.
+        If unsupported or unavailable, the spoken result may be “Forecast not available.”
       selector:
         entity:
           domain: weather
@@ -29,32 +26,49 @@ blueprint:
     # Scheduling
     hour_pattern:
       name: Trigger — hour pattern
-      description: "Time pattern for hours (e.g. `/1` = every hour, `/2` = every 2 hours, or a fixed hour like `9`)."
+      description: |
+        Controls **which hours** the automation is eligible to run, using the `time_pattern` hour field.
+        • `/1` → every hour (recommended)
+        • `/2` → every 2 hours, `/3` → every 3 hours, etc.
+        • `9` → only at 9 AM local time
+        This combines with “Trigger — minute of hour,” the active time window, and weekdays.
       default: "/1"
       selector:
         text: {}
 
     minute_mark:
       name: Trigger — minute of hour
-      description: "At what minute past the hour should it run (00–59)."
+      description: |
+        The minute within each eligible hour when this runs (string `00`–`59`). Example: `"3"` means it fires at `HH:03`.
+        This is helpful to stagger multiple scheduled automations (e.g., news at :00, weather at :03).
       default: "3"
       selector:
         text: {}
 
     start_time:
       name: Active from (time)
+      description: |
+        Daily **start** of the active window in local time. The automation will only run **after** this time **and**
+        before “Active until.” Keep this earlier than “Active until.” Example: `09:00:00`.
       default: "09:00:00"
       selector:
         time: {}
 
     end_time:
       name: Active until (time)
+      description: |
+        Daily **end** of the active window in local time. The automation will only run before this time.
+        Keep this **later** than “Active from.” Example: `22:00:00`. (If you set `end` earlier than `start`,
+        nothing will run because both conditions must be true.)
       default: "22:00:00"
       selector:
         time: {}
 
     weekdays:
       name: Active weekdays
+      description: |
+        Which days of the week this is allowed to run. Include all you want (e.g., Mon–Fri only for a commute briefing,
+        or all seven for daily coverage). Must include at least one day or it will never run.
       default:
         - sun
         - mon
@@ -79,6 +93,9 @@ blueprint:
     # Forecast logic tuning
     precip_threshold:
       name: Precipitation probability threshold (%)
+      description: |
+        Minimum **precipitation_probability** (0–100) in the next “Hours ahead” window required to mention rain/snow.
+        Example: `40` means only announce if any hourly forecast has ≥40% chance. Set `0` to mention any predicted precip.
       default: 40
       selector:
         number:
@@ -89,6 +106,9 @@ blueprint:
 
     hours_ahead:
       name: Hours ahead to scan for precip
+      description: |
+        How far into the future (in hours) to scan the hourly forecast for precipitation probability. Larger windows
+        catch more possibilities but can be less relevant for immediate plans. Typical: `12–24`. Max here is `48`.
       default: 24
       selector:
         number:
@@ -99,27 +119,40 @@ blueprint:
     # AI rewrite (optional)
     enable_ai:
       name: Use AI rewrite
-      description: "If on, message is rewritten by your AI Task entity before speaking."
+      description: |
+        If **on**, the crafted message is sent to your **AI Task** entity for a concise, broadcast-style rewrite.
+        If **off**, the original message is spoken as built (no AI step). Turning this off is useful if the AI service
+        is unavailable or you prefer the raw phrasing.
       default: true
       selector:
         boolean: {}
 
     ai_task_entity:
       name: AI Task entity
-      description: "Entity from your AI Task integration (e.g., `ai_task.google_ai_task_2`). Required if AI rewrite is enabled."
+      description: |
+        The AI Task entity that will process the rewrite (e.g., `ai_task.google_ai_task_2`). Required **only if**
+        “Use AI rewrite” is on. The blueprint calls `ai_task.generate_data` with your instructions and the built message.
+        If this entity is missing or fails, it falls back to the original message.
       selector:
         entity:
           domain: ai_task
 
     ai_instructions:
       name: AI rewrite instructions
-      description: "Prompt fed to your AI Task. The original message is appended after this prompt."
+      description: |
+        The **system prompt** sent to your AI Task. The blueprint appends the original message after this prompt under
+        “Message:". Keep this strict to avoid the AI changing facts. The default prompt enforces exact facts,
+        raw text output, and brevity.
       default: |
-        Rewrite the following weather announcement in a lively, professional TV
-        weatherman style. Keep every number, time, and measurable fact exactly
-        the same. Do not invent or add new facts. Be concise (under 20 seconds),
-        natural, and avoid emojis. DONT APPEND ANYTHING TO THE BEGINNING OR END
-        OF THE RESPONSE!
+        Rewrite the message below for clear, natural TTS in a crisp TV-meteorologist voice.
+
+        Hard rules:
+        • Preserve every fact exactly: all numbers, units (°, %, mph), times, day names, and weather terms.
+        • Do not invent, omit, reorder, round, or restate any facts. Keep original sequencing of info.
+        • Output RAW TEXT ONLY — no quotes, code fences, YAML/JSON, greetings, preambles, or sign-offs.
+        • 2–4 short sentences, ≤55 words, plain vocabulary, no emojis, no hashtags, no ALL CAPS.
+        • If precipitation timing/probability exists, mention it once using the same daypart/time and %; otherwise omit.
+        • Keep symbols and formatting as given (°, %, AM/PM). If the input is “Forecast not available.” return it unchanged.
       selector:
         text:
           multiline: true
@@ -127,14 +160,19 @@ blueprint:
     # TTS and output
     tts_engine:
       name: TTS engine entity
-      description: "For example: `tts.piper`."
+      description: |
+        The TTS entity to use for speaking, e.g., `tts.piper`. Must support the `tts.speak` service. Some engines may
+        ignore the `voice` option. If unsupported, nothing will be spoken.
       selector:
         entity:
           domain: tts
 
     speakers:
       name: Speaker(s)
-      description: "One or more media_player(s) to speak through."
+      description: |
+        One or more `media_player` entities that will play the TTS. The blueprint sets volume once on **all** selected
+        speakers, then speaks to **each speaker individually**. If you use grouped speakers, prefer targeting the group
+        entity to keep volumes consistent.
       selector:
         entity:
           domain: media_player
@@ -142,7 +180,10 @@ blueprint:
 
     pre_speak_volume:
       name: Pre-speak volume level
-      description: "Set volume before speaking (applies to all selected speakers)."
+      description: |
+        Volume (0.00–1.00) to set on all selected speakers **just before** speaking (via `media_player.volume_set`).
+        Useful to ensure audibility. If you don’t want volume changes, pick your normal listening level here or adjust
+        your media players separately.
       default: 0.6
       selector:
         number:
@@ -153,13 +194,18 @@ blueprint:
 
     tts_cache:
       name: Cache TTS audio
+      description: |
+        If **on**, lets the TTS engine reuse previously generated audio for identical messages, which can reduce latency
+        and load. If your engine doesn’t support caching, this is simply ignored.
       default: true
       selector:
         boolean: {}
 
     tts_voice:
       name: TTS voice (if supported)
-      description: "For Piper, e.g. `en_US-carlin-high`."
+      description: |
+        Voice identifier for your TTS engine (e.g., Piper `en_US-carlin-high`). Engines that don’t support voice
+        selection will ignore this. Leave as default or set a preferred voice.
       default: "en_US-carlin-high"
       selector:
         text: {}
@@ -194,7 +240,7 @@ actions:
       type: hourly
     response_variable: h
 
-  # 3) Build the message exactly like your original logic
+  # 3) Build the message
   - variables:
       key: !input weather_entity
       precip_threshold: !input precip_threshold
@@ -294,9 +340,10 @@ actions:
 
         {{ p | join(' ') if p|length > 0 else 'Forecast not available.' }}
 
-      # convenience flags for AI step
+      # blueprint inputs captured as variables for templating
       i_ai: !input enable_ai
       i_ai_task: !input ai_task_entity
+      i_ai_text: !input ai_instructions
 
   # 4) Optionally rewrite via AI Task
   - choose:
@@ -309,8 +356,11 @@ actions:
               entity_id: !input ai_task_entity
             data:
               task_name: weather message
-              instructions: >-
-                {{ (!input ai_instructions) ~ ' : "' ~ (msg | replace('"','\\"')) ~ '"'}}
+              instructions: |-
+                {{ i_ai_text }}
+
+                Message:
+                "{{ msg | replace('"','\\"') }}"
             response_variable: aimsg
           - variables:
               spoken: "{{ aimsg.data }}"
