@@ -1,0 +1,340 @@
+blueprint:
+  name: Weather — Forecast TTS (AI Optional)
+  description: |
+    Speak a concise, TV-weatherman-style forecast to one or more speakers at a schedule you choose.
+    
+    ## What it does
+    - Pulls **daily** and **hourly** data from your chosen Weather entity.
+    - Builds a natural summary: current conditions, temperature, humidity, today's high/low, and (if likely) **rain/snow timing** with percentage and daypart.
+    - (Optional) Sends that summary to an **AI Task** entity to rewrite in a lively, professional style **without changing any facts**.
+    - Speaks the result via your chosen **TTS engine** to one or more **media players**, with an optional pre-announcement volume set.
+    - Runs on a **time pattern** (e.g., every hour at :03) and only within the **time window** and **weekdays** you select.
+
+    ## Tips
+    - Use **Piper** (tts.piper) for fast, local TTS and set the **Voice** input (e.g., `en_US-carlin-high`).
+    - Tune the **Precipitation Threshold** and **Hours Ahead** to control when it talks about rain/snow.
+    - If you don’t want AI rewrite, just turn **Use AI Rewrite** off—then it speaks the raw crafted message.
+
+  domain: automation
+  source_url: https://github.com/zodyking/oil-diffuser-blueprint/blob/main/oil-diffuser-ai.yaml
+
+  input:
+    weather_entity:
+      name: Weather entity (with forecast)
+      description: Select your weather entity that supports `weather.get_forecasts`.
+      selector:
+        entity:
+          domain: weather
+
+    # Scheduling
+    hour_pattern:
+      name: Trigger — hour pattern
+      description: "Time pattern for hours (e.g. `/1` = every hour, `/2` = every 2 hours, or a fixed hour like `9`)."
+      default: "/1"
+      selector:
+        text: {}
+
+    minute_mark:
+      name: Trigger — minute of hour
+      description: "At what minute past the hour should it run (00–59)."
+      default: "3"
+      selector:
+        text: {}
+
+    start_time:
+      name: Active from (time)
+      default: "09:00:00"
+      selector:
+        time: {}
+
+    end_time:
+      name: Active until (time)
+      default: "22:00:00"
+      selector:
+        time: {}
+
+    weekdays:
+      name: Active weekdays
+      default:
+        - sun
+        - mon
+        - tue
+        - wed
+        - thu
+        - fri
+        - sat
+      selector:
+        select:
+          multiple: true
+          mode: list
+          options:
+            - sun
+            - mon
+            - tue
+            - wed
+            - thu
+            - fri
+            - sat
+
+    # Forecast logic tuning
+    precip_threshold:
+      name: Precipitation probability threshold (%)
+      default: 40
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          unit_of_measurement: "%"
+
+    hours_ahead:
+      name: Hours ahead to scan for precip
+      default: 24
+      selector:
+        number:
+          min: 1
+          max: 48
+          step: 1
+
+    # AI rewrite (optional)
+    enable_ai:
+      name: Use AI rewrite
+      description: "If on, message is rewritten by your AI Task entity before speaking."
+      default: true
+      selector:
+        boolean: {}
+
+    ai_task_entity:
+      name: AI Task entity
+      description: "Entity from your AI Task integration (e.g., `ai_task.google_ai_task_2`). Required if AI rewrite is enabled."
+      selector:
+        entity:
+          domain: ai_task
+
+    ai_instructions:
+      name: AI rewrite instructions
+      description: "Prompt fed to your AI Task. The original message is appended after this prompt."
+      default: |
+        Rewrite the following weather announcement in a lively, professional TV
+        weatherman style. Keep every number, time, and measurable fact exactly
+        the same. Do not invent or add new facts. Be concise (under 20 seconds),
+        natural, and avoid emojis. DONT APPEND ANYTHING TO THE BEGINNING OR END
+        OF THE RESPONSE!
+      selector:
+        text:
+          multiline: true
+
+    # TTS and output
+    tts_engine:
+      name: TTS engine entity
+      description: "For example: `tts.piper`."
+      selector:
+        entity:
+          domain: tts
+
+    speakers:
+      name: Speaker(s)
+      description: "One or more media_player(s) to speak through."
+      selector:
+        entity:
+          domain: media_player
+          multiple: true
+
+    pre_speak_volume:
+      name: Pre-speak volume level
+      description: "Set volume before speaking (applies to all selected speakers)."
+      default: 0.6
+      selector:
+        number:
+          min: 0
+          max: 1
+          step: 0.01
+          mode: slider
+
+    tts_cache:
+      name: Cache TTS audio
+      default: true
+      selector:
+        boolean: {}
+
+    tts_voice:
+      name: TTS voice (if supported)
+      description: "For Piper, e.g. `en_US-carlin-high`."
+      default: "en_US-carlin-high"
+      selector:
+        text: {}
+
+mode: single
+
+triggers:
+  - trigger: time_pattern
+    hours: !input hour_pattern
+    minutes: !input minute_mark
+
+conditions:
+  - condition: time
+    after: !input start_time
+    before: !input end_time
+    weekday: !input weekdays
+
+actions:
+  # 1) Get daily forecast
+  - action: weather.get_forecasts
+    target:
+      entity_id: !input weather_entity
+    data:
+      type: daily
+    response_variable: d
+
+  # 2) Get hourly forecast
+  - action: weather.get_forecasts
+    target:
+      entity_id: !input weather_entity
+    data:
+      type: hourly
+    response_variable: h
+
+  # 3) Build the message exactly like your original logic
+  - variables:
+      key: !input weather_entity
+      precip_threshold: !input precip_threshold
+      hours_ahead: !input hours_ahead
+
+      now_hour: "{{ now().hour }}"
+      day_name: "{{ (now() | as_timestamp | timestamp_custom('%A', true)) }}"
+      greeting: >-
+        {% if 5 <= now_hour <= 11 %}Good morning{% elif 12 <= now_hour <= 17 %}
+        Good afternoon{% else %}Good evening{% endif %}
+
+      now_temp: "{{ state_attr(key,'temperature') }}"
+      now_hum: "{{ state_attr(key,'humidity') }}"
+      now_cond_h: >-
+        {% set s = (states(key) or '') | lower %}
+        {% set s = s | replace('_',' ') | replace('-',' ') %}
+        {% set s = s | replace('partlycloudy','partly cloudy') | replace('clearnight','clear night') %}
+        {{ s | trim }}
+
+      daily_list: "{{ d.get(key,{}).get('forecast',[]) }}"
+      today: "{{ daily_list[0] if daily_list|length>0 else dict() }}"
+      high: "{{ today.get('temperature') }}"
+      low: "{{ today.get('templow', today.get('temperature_low')) }}"
+      today_cond_h: >-
+        {% set raw = (today.get('condition') or states(key) or '') | lower %}
+        {% set s = raw | replace('_',' ') | replace('-',' ') %}
+        {% set s = s | replace('partlycloudy','partly cloudy') | replace('clearnight','clear night') %}
+        {{ s | trim }}
+
+      now_norm: "{{ now_cond_h | replace(' ','') }}"
+      today_norm: "{{ today_cond_h | replace(' ','') }}"
+      mention_expect: "{{ today_cond_h != '' and today_norm != now_norm }}"
+
+      hourly_list: "{{ h.get(key,{}).get('forecast',[]) }}"
+      next_hours: "{{ hourly_list[:hours_ahead] if hourly_list else [] }}"
+      hits: >-
+        {{ (next_hours
+            | selectattr('precipitation_probability','defined')
+            | selectattr('precipitation_probability','ge', precip_threshold)
+            | list) }}
+      first_hit: "{{ hits[0] if hits|length>0 else dict() }}"
+      hit_pp: "{{ first_hit.get('precipitation_probability') }}"
+      hit_cond_h: >-
+        {% set raw = (first_hit.get('condition','') | lower) %}
+        {% set s = raw | replace('_',' ') | replace('-',' ') %}
+        {% set s = s | replace('partlycloudy','partly cloudy') | replace('clearnight','clear night') %}
+        {{ s | trim }}
+      hit_ts: >-
+        {% set t = none %}
+        {% if first_hit.get('datetime') %}
+          {% set t = as_datetime(first_hit.get('datetime')) | as_timestamp %}
+        {% endif %}
+        {{ t }}
+      hit_clock: >-
+        {% set out = '' %}
+        {% if hit_ts is not none %}
+          {% set out = (hit_ts | timestamp_custom('%I %p', true)) | replace(' 0',' ') %}
+        {% endif %}
+        {{ out }}
+      hit_hour_num: >-
+        {% set out = 0 %}
+        {% if hit_ts is not none %}
+          {% set out = (hit_ts | timestamp_custom('%H', true)) | int %}
+        {% endif %}
+        {{ out }}
+      hit_daypart: >-
+        {% set hnum = hit_hour_num %}
+        {% if 5 <= hnum <= 11 %}this morning{% elif 12 <= hnum <= 17 %}this afternoon
+        {% elif 18 <= hnum <= 22 %}this evening{% else %}overnight{% endif %}
+
+      precip_kind: >-
+        {% if 'snow' in hit_cond_h %}snow{% elif 'sleet' in hit_cond_h or 'hail' in hit_cond_h %}mixed precipitation
+        {% elif hit_cond_h %}rain{% else %}precipitation{% endif %}
+
+      msg: >-
+        {% set p = [] %}
+        {% set p = p + [greeting ~ '! ' ~ day_name ~ "'s forecast."] %}
+
+        {% set now_bits = [] %}
+        {% if now_cond_h %}{% set now_bits = now_bits + [now_cond_h | capitalize] %}{% endif %}
+        {% if now_temp is not none %}{% set now_bits = now_bits + [ (now_temp | round(0) ~ '°') ] %}{% endif %}
+        {% if now_hum  is not none %}{% set now_bits = now_bits + [ ('humidity ' ~ now_hum ~ '%') ] %}{% endif %}
+        {% if now_bits | length > 0 %}{% set p = p + ['Right now: ' ~ (now_bits | join(', ')) ~ '.'] %}{% endif %}
+
+        {% set today_bits = [] %}
+        {% if mention_expect %}{% set today_bits = today_bits + ['Expect ' ~ today_cond_h ~ '.'] %}{% endif %}
+        {% if high is not none %}{% set today_bits = today_bits + ['High ' ~ (high | round(0)) ~ '°.'] %}{% endif %}
+        {% if low  is not none %}{% set today_bits = today_bits + ['Low '  ~ (low  | round(0)) ~ '°.'] %}{% endif %}
+        {% if today_bits | length > 0 %}{% set p = p + [ today_bits | join(' ') ] %}{% endif %}
+
+        {% if hits | length > 0 and hit_pp is not none %}
+          {% set phr = precip_kind ~ ' chances ' ~ hit_daypart %}
+          {% if hit_clock %}{% set phr = phr ~ ' around ' ~ hit_clock %}{% endif %}
+          {% set phr = phr ~ ': ' ~ (hit_pp | int) ~ '%.' %}
+          {% set p = p + [ phr ] %}
+        {% endif %}
+
+        {{ p | join(' ') if p|length > 0 else 'Forecast not available.' }}
+
+      # convenience flags for AI step
+      i_ai: !input enable_ai
+      i_ai_task: !input ai_task_entity
+
+  # 4) Optionally rewrite via AI Task
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ i_ai and (i_ai_task | default('') | string) != '' }}"
+        sequence:
+          - action: ai_task.generate_data
+            target:
+              entity_id: !input ai_task_entity
+            data:
+              task_name: weather message
+              instructions: >-
+                {{ (!input ai_instructions) ~ ' : "' ~ (msg | replace('"','\\"')) ~ '"'}}
+            response_variable: aimsg
+          - variables:
+              spoken: "{{ aimsg.data }}"
+    default:
+      - variables:
+          spoken: "{{ msg }}"
+
+  # 5) Set pre-speak volume on all speakers
+  - action: media_player.volume_set
+    target:
+      entity_id: !input speakers
+    data:
+      volume_level: !input pre_speak_volume
+
+  # 6) Speak to each selected speaker
+  - repeat:
+      for_each: !input speakers
+      sequence:
+        - action: tts.speak
+          target:
+            entity_id: !input tts_engine
+          data:
+            cache: !input tts_cache
+            media_player_entity_id: "{{ repeat.item }}"
+            message: "{{ spoken }}"
+            options:
+              voice: !input tts_voice
