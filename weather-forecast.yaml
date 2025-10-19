@@ -1,6 +1,8 @@
 blueprint:
   name: Weather — Forecast TTS (AI Optional)
   description: |
+    ![Weather Forecast Alerts banner](https://raw.githubusercontent.com/zodyking/weather-forecast-alert-blueprint/refs/heads/main/imageforecast.png)
+
     Speak a concise, TV-weatherman-style forecast to one or more speakers on a schedule.
     Pulls daily + hourly forecasts, mentions likely rain/snow with daypart and %, and (optionally) rewrites via an AI Task without changing facts.
 
@@ -8,9 +10,10 @@ blueprint:
     • Use a weather entity that supports `weather.get_forecasts` (daily + hourly).
     • Tune “Precipitation probability threshold” and “Hours ahead” to control precip mentions.
     • Turn off “Use AI rewrite” to speak the raw crafted message.
+    • If your audio cuts in late, increase **TTS pre-roll (ms)** to give speakers time to wake up.
 
   domain: automation
-  source_url: https://github.com/zodyking/oil-diffuser-blueprint/blob/main/oil-diffuser-ai.yaml
+  source_url: https://github.com/zodyking/weather-forecast-alert-blueprint
 
   input:
     weather_entity:
@@ -22,6 +25,7 @@ blueprint:
         entity:
           domain: weather
 
+    # Scheduling
     hour_pattern:
       name: Trigger — hour pattern
       description: |
@@ -71,6 +75,7 @@ blueprint:
           mode: list
           options: [sun, mon, tue, wed, thu, fri, sat]
 
+    # Forecast logic tuning
     precip_threshold:
       name: Precipitation probability threshold (%)
       description: |
@@ -96,6 +101,7 @@ blueprint:
           max: 48
           step: 1
 
+    # AI rewrite (optional)
     enable_ai:
       name: Use AI rewrite
       description: |
@@ -133,6 +139,7 @@ blueprint:
         text:
           multiline: true
 
+    # TTS and output
     tts_engine:
       name: TTS engine entity
       description: |
@@ -182,6 +189,20 @@ blueprint:
       selector:
         text: {}
 
+    pre_roll_ms:
+      name: TTS pre-roll (ms)
+      description: |
+        Adds a short silence **before** each `tts.speak` call to avoid the first syllable being cut off on some speakers.
+        Increase if you still hear choppiness; decrease if you want faster starts. Applied per speaker, per message.
+      default: 150
+      selector:
+        number:
+          min: 0
+          max: 300
+          step: 10
+          unit_of_measurement: ms
+          mode: slider
+
 mode: single
 
 triggers:
@@ -196,6 +217,7 @@ conditions:
     weekday: !input weekdays
 
 actions:
+  # 1) Get daily forecast
   - action: weather.get_forecasts
     target:
       entity_id: !input weather_entity
@@ -203,6 +225,7 @@ actions:
       type: daily
     response_variable: d
 
+  # 2) Get hourly forecast
   - action: weather.get_forecasts
     target:
       entity_id: !input weather_entity
@@ -210,6 +233,7 @@ actions:
       type: hourly
     response_variable: h
 
+  # 3) Build the message
   - variables:
       key: !input weather_entity
       precip_threshold: !input precip_threshold
@@ -314,6 +338,7 @@ actions:
       i_ai_task: !input ai_task_entity
       i_ai_text: !input ai_instructions
 
+  # 4) Optional AI rewrite
   - choose:
       - conditions:
           - condition: template
@@ -335,15 +360,19 @@ actions:
       - variables:
           spoken: "{{ msg }}"
 
+  # 5) Set pre-speak volume on all speakers
   - action: media_player.volume_set
     target:
       entity_id: !input speakers
     data:
       volume_level: !input pre_speak_volume
 
+  # 6) Speak to each selected speaker with a per-speaker pre-roll delay
   - repeat:
       for_each: !input speakers
       sequence:
+        - delay:
+            milliseconds: !input pre_roll_ms
         - action: tts.speak
           target:
             entity_id: !input tts_engine
