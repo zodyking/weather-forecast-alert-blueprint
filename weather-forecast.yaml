@@ -12,15 +12,30 @@ blueprint:
   domain: automation
   source_url: https://github.com/zodyking/weather-forecast-alert-blueprint
   input:
-    weather_entity:
-      name: Weather entity (with forecast)
-      description: |
-        Weather entity to read from. Must support `weather.get_forecasts` for both **daily** and **hourly** data.
-        Examples: `weather.home`, `weather.forecast_home`. If unsupported/unavailable, you may hear “Forecast not available.”
+    # Master toggles
+    time_toggle_entity:
+      name: Time-based forecast toggle
+      description: Optional input_boolean or switch. If selected and 'on', time-based forecasts are enabled. If 'off' or not selected, time-based alerts are disabled.
+      default: ""
       selector:
         entity:
-          domain: weather
-    # Scheduling
+          filter:
+            domain: [input_boolean, switch]
+    enable_presence_triggered:
+      name: Enable presence-triggered forecasts
+      description: If enabled, forecasts will be announced whenever any selected presence sensor turns 'on' (e.g., someone arrives home).
+      default: false
+      selector:
+        boolean: {}
+    presence_sensors:
+      name: Presence sensors
+      description: One or more binary sensors. Used for presence-triggered announcements if enabled.
+      default: []
+      selector:
+        entity:
+          domain: binary_sensor
+          multiple: true
+    # Scheduling (only active if time toggle is on)
     hour_pattern:
       name: Trigger — hour pattern
       description: |
@@ -182,25 +197,7 @@ blueprint:
           step: 10
           unit_of_measurement: ms
           mode: slider
-    time_toggle_entity:
-      name: Time-based toggle
-      description: Optional entity that must be 'on' to enable time-based forecast alerts. If not selected, always enabled.
-      default: ""
-      selector:
-        entity: {}
-    presence_check_enabled:
-      name: Enable presence check
-      description: If enabled, announcements will only be made if at least one selected presence sensor is 'on' (e.g., someone is home).
-      default: false
-      selector:
-        boolean: {}
-    presence_sensors:
-      name: Presence sensors
-      description: Select one or more binary sensors indicating presence. Used only if presence check is enabled.
-      selector:
-        entity:
-          domain: binary_sensor
-          multiple: true
+    # Weather change announcements
     enable_current_change_announce:
       name: Enable current weather change announcements
       description: Announce when the current weather changes to precipitation (e.g., starts raining).
@@ -223,26 +220,29 @@ blueprint:
           max: 30
           step: 1
           unit_of_measurement: min
+
 mode: single
+
 triggers:
   - trigger: time_pattern
     hours: !input hour_pattern
     minutes: !input minute_mark
     id: time_based
   - trigger: state
+    entity_id: !input presence_sensors
+    to: "on"
+    id: presence_arrival
+  - trigger: state
     entity_id: !input weather_entity
     id: current_change
   - trigger: time_pattern
     minutes: /5
     id: upcoming_change
+
 conditions:
-  - condition: template
-    value_template: >-
-      {% set enabled = !input presence_check_enabled %}
-      {% set sensors = !input presence_sensors | default([]) %}
-      {{ not enabled or sensors | length == 0 or (sensors | select('is_state', 'on') | list | length > 0) }}
   - condition: or
     conditions:
+      # Time-based: only if toggle is on (or not set) AND within time/day window
       - condition: and
         conditions:
           - condition: trigger
@@ -255,25 +255,42 @@ conditions:
             value_template: >-
               {% set toggle = !input time_toggle_entity | default('') %}
               {{ toggle == '' or is_state(toggle, 'on') }}
+      # Presence-triggered: only if feature enabled
+      - condition: and
+        conditions:
+          - condition: trigger
+            id: presence_arrival
+          - condition: template
+            value_template: "{{ !input enable_presence_triggered }}"
+      # Current weather change
       - condition: and
         conditions:
           - condition: trigger
             id: current_change
           - condition: template
             value_template: "{{ !input enable_current_change_announce }}"
+      # Upcoming change
       - condition: and
         conditions:
           - condition: trigger
             id: upcoming_change
           - condition: template
             value_template: "{{ !input enable_upcoming_change_announce }}"
+
 actions:
   - variables:
       key: !input weather_entity
+      spoken: ""
+
+  # === TIME-BASED OR PRESENCE-TRIGGERED FORECAST ===
   - choose:
       - conditions:
-          - condition: trigger
-            id: time_based
+          - condition: or
+            conditions:
+              - condition: trigger
+                id: time_based
+              - condition: trigger
+                id: presence_arrival
         sequence:
           - action: weather.get_forecasts
             target:
@@ -359,12 +376,12 @@ actions:
                 {% set now_bits = [] %}
                 {% if now_cond_h %}{% set now_bits = now_bits + [now_cond_h | capitalize] %}{% endif %}
                 {% if now_temp is not none %}{% set now_bits = now_bits + [ (now_temp | round(0) ~ '°') ] %}{% endif %}
-                {% if now_hum is not none %}{% set now_bits = now_bits + [ ('humidity ' ~ now_hum ~ '%') ] %}{% endif %}
+                {% if now_hum is not none %}{% set now_bits = now_bits + [ ('humidity ' ~ now_hum ~ '%') ]}{% endif %}
                 {% if now_bits | length > 0 %}{% set p = p + ['Right now: ' ~ (now_bits | join(', ')) ~ '.'] %}{% endif %}
                 {% set today_bits = [] %}
                 {% if mention_expect %}{% set today_bits = today_bits + ['Expect ' ~ today_cond_h ~ '.'] %}{% endif %}
                 {% if high is not none %}{% set today_bits = today_bits + ['High ' ~ (high | round(0)) ~ '°.'] %}{% endif %}
-                {% if low is not none %}{% set today_bits = today_bits + ['Low ' ~ (low | round(0)) ~ '°.'] %}{% endif %}
+                {% if low is not none %}{% set today_bits = today_bits + ['Low ' ~ (low | round(0)) ~ '°.']}{% endif %}
                 {% if today_bits | length > 0 %}{% set p = p + [ today_bits | join(' ') ] %}{% endif %}
                 {% if hits | length > 0 and hit_pp is not none %}
                   {% set phr = precip_kind ~ ' chances ' ~ hit_daypart %}
@@ -395,6 +412,8 @@ actions:
             default:
               - variables:
                   spoken: "{{ msg }}"
+
+      # === CURRENT WEATHER CHANGE TO PRECIP ===
       - conditions:
           - condition: trigger
             id: current_change
@@ -407,12 +426,14 @@ actions:
                 {% set s = s | replace('partlycloudy','partly cloudy') | replace('clearnight','clear night') %}
                 {{ s | trim }}
               precip_conds: ['rainy', 'pouring', 'hail', 'snowy', 'snowy-rainy', 'lightning-rainy']
-              is_change_to_precip: "{{ trigger.to_state.state in precip_conds and trigger.from_state.state not in precip_conds }}"
+              is_change_to_precip: "{{ trigger.to_state.state in precip_conds and (trigger.from_state.state | default('')) not in precip_conds }}"
           - if:
               - "{{ is_change_to_precip }}"
             then:
               - variables:
                   spoken: "Weather update: it is now {{ now_cond_h }}."
+
+      # === UPCOMING PRECIP CHANGE ===
       - conditions:
           - condition: trigger
             id: upcoming_change
@@ -449,6 +470,8 @@ actions:
             then:
               - variables:
                   spoken: "Weather alert: {{ precip_kind }} expected in about {{ min_to }} minutes."
+
+  # === SPEAK IF MESSAGE EXISTS ===
   - if:
       - "{{ spoken | default('') | trim != '' }}"
     then:
