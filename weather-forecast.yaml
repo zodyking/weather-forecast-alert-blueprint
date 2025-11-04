@@ -14,29 +14,34 @@ blueprint:
   input:
     weather_data:
       name: Weather Data
+      description: This section allows you to select the primary weather entity that supplies current conditions and forecast information for generating announcements. Choose an entity compatible with Home Assistant's weather integrations, such as OpenWeatherMap, which supports both daily and hourly forecasts essential for detailed weather reports.
       icon: mdi:asterisk
       collapsed: true
       input:
         weather_entity:
           name: Weather Entity
           description: The weather entity in Home Assistant that provides current conditions and forecast data, including support for hourly and daily forecasts from services like OpenWeatherMap or similar integrations.
+          default: ''
           selector:
             entity:
               domain: weather
     tts_settings:
       name: TTS Settings
+      description: Configure the Text-to-Speech (TTS) system here, including the engine for voice synthesis, media players for output, voice selection, volume control, and pre-roll delay to ensure smooth audio playback. These settings determine how announcements are spoken and delivered through your smart home devices.
       icon: mdi:account-voice
       collapsed: true
       input:
         tts_engine:
           name: TTS Engine
           description: The Text-to-Speech engine entity in Home Assistant responsible for generating spoken announcements, such as Piper TTS or Google Translate TTS.
+          default: ''
           selector:
             entity:
               domain: tts
         speakers:
           name: Speakers
           description: The media player entities (e.g., speakers or smart displays) where the TTS announcements will be played. Multiple can be selected for broadcasting to different locations.
+          default: []
           selector:
             entity:
               domain: media_player
@@ -69,6 +74,7 @@ blueprint:
               unit_of_measurement: ms
     ai_settings:
       name: AI Rephrasing (Optional)
+      description: This optional section enables AI-based rephrasing of weather messages for a more natural, professional tone, similar to a TV meteorologist. Select an AI task entity, toggle rephrasing on or off, and customize the prompt to guide how the AI rewrites messages while strictly preserving all factual details.
       icon: mdi:robot
       collapsed: true
       input:
@@ -94,6 +100,7 @@ blueprint:
               multiline: true
     time_based_settings:
       name: Time-Based Announcements
+      description: Set up scheduled weather announcements that occur at regular intervals throughout the day. This section includes toggles for enabling the feature, patterns for timing (e.g., every few hours), start and end times to restrict announcements to specific periods, and day-of-week selections to limit when they trigger.
       icon: mdi:clock-outline
       collapsed: true
       input:
@@ -145,6 +152,7 @@ blueprint:
                   value: sun
     presence_settings:
       name: Presence-Triggered Announcements
+      description: Enable weather updates triggered by presence detection, ideal for announcing forecasts upon arrival home. Configure sensors for detecting occupancy and toggle the feature to integrate with your smart home's motion or presence awareness.
       icon: mdi:motion-sensor
       collapsed: true
       input:
@@ -157,12 +165,14 @@ blueprint:
         presence_sensors:
           name: Presence Sensors
           description: Binary sensor entities that detect presence (e.g., motion or occupancy sensors). Announcements trigger when these turn on if presence-triggered is enabled.
+          default: []
           selector:
             entity:
               domain: binary_sensor
               multiple: true
     change_settings:
       name: Change Announcements
+      description: Control alerts for real-time and impending weather changes. This includes toggles for notifying about current condition shifts (e.g., starting to rain) and upcoming events, with adjustable timing for advance warnings to prepare users for weather shifts.
       icon: mdi:weather-cloudy-alert
       collapsed: true
       input:
@@ -190,6 +200,7 @@ blueprint:
               unit_of_measurement: minutes
     precip_settings:
       name: Precipitation Settings
+      description: Fine-tune how precipitation is handled in forecasts and alerts. Set thresholds for probability to avoid unnecessary mentions and define the forecast window in hours to focus on near-term or extended predictions.
       icon: mdi:weather-rainy
       collapsed: true
       input:
