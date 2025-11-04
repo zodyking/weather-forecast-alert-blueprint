@@ -1,1 +1,473 @@
-
+blueprint:
+  name: Weather — Forecast TTS (AI Optional)
+  description: |
+    ![Weather Forecast Alerts banner](https://raw.githubusercontent.com/zodyking/weather-forecast-alert-blueprint/refs/heads/main/imageforecast.png)
+    Speak a concise, TV-weatherman-style forecast to one or more speakers on a schedule.
+    Pulls daily + hourly forecasts, mentions likely rain/snow with daypart and %, and (optionally) rewrites via an AI Task without changing facts.
+    Tips:
+    • Use a weather entity that supports `weather.get_forecasts` (daily + hourly).
+    • Tune “Precipitation probability threshold” and “Hours ahead” to control precip mentions.
+    • Turn off “Use AI rewrite” to speak the raw crafted message.
+    • If your audio cuts in late, increase **TTS pre-roll (ms)** to give speakers time to wake up.
+  domain: automation
+  source_url: https://github.com/zodyking/weather-forecast-alert-blueprint
+  input:
+    weather_entity:
+      name: Weather entity (with forecast)
+      description: |
+        Weather entity to read from. Must support `weather.get_forecasts` for both **daily** and **hourly** data.
+        Examples: `weather.home`, `weather.forecast_home`. If unsupported/unavailable, you may hear “Forecast not available.”
+      selector:
+        entity:
+          domain: weather
+    # Scheduling
+    hour_pattern:
+      name: Trigger — hour pattern
+      description: |
+        Which hours this runs (time_pattern hour):
+        • `/1` every hour (recommended) • `/2` every 2 hours • `9` only at 9 AM.
+        Works together with “minute of hour,” active window, and weekdays.
+      default: "/1"
+      selector:
+        text: {}
+    minute_mark:
+      name: Trigger — minute of hour
+      description: |
+        Minute within each eligible hour (string `00`–`59`). Example `"3"` → runs at `HH:03`.
+        Use different minute marks to stagger multiple automations.
+      default: "3"
+      selector:
+        text: {}
+    start_time:
+      name: Active from (time)
+      description: |
+        Start of the daily active window (local). Automation runs **after** this time and before “Active until.”
+        Example: `09:00:00`.
+      default: "09:00:00"
+      selector:
+        time: {}
+    end_time:
+      name: Active until (time)
+      description: |
+        End of the daily active window (local). Automation runs **before** this time.
+        Keep this later than “Active from.” Example: `22:00:00`.
+      default: "22:00:00"
+      selector:
+        time: {}
+    weekdays:
+      name: Active weekdays
+      description: |
+        Days allowed to run. Choose any set (e.g., Mon–Fri for commute, or all seven).
+        Must include at least one day or nothing will run.
+      default: [sun, mon, tue, wed, thu, fri, sat]
+      selector:
+        select:
+          multiple: true
+          mode: list
+          options: [sun, mon, tue, wed, thu, fri, sat]
+    # Forecast logic tuning
+    precip_threshold:
+      name: Precipitation probability threshold (%)
+      description: |
+        Minimum hourly `precipitation_probability` within the scan window required to mention rain/snow.
+        Example: `40` → announce only if any hour has ≥40%. Set `0` to mention any predicted precip.
+      default: 40
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          unit_of_measurement: "%"
+    hours_ahead:
+      name: Hours ahead to scan for precip
+      description: |
+        How many upcoming hours (1–48) to scan for precipitation probability. Typical: 12–24.
+        Larger windows catch more, but may be less relevant to immediate plans.
+      default: 24
+      selector:
+        number:
+          min: 1
+          max: 48
+          step: 1
+    # AI rewrite (optional)
+    enable_ai:
+      name: Use AI rewrite
+      description: |
+        If **on**, the crafted message is sent to your **AI Task** entity for a concise broadcast-style rewrite.
+        If **off**, the raw crafted message is spoken (no AI call).
+      default: true
+      selector:
+        boolean: {}
+    ai_task_entity:
+      name: AI Task entity
+      description: |
+        AI Task entity to process the rewrite (e.g., `ai_task.google_ai_task_2`). Required only if “Use AI rewrite” is on.
+        The blueprint calls `ai_task.generate_data` with your instructions and the built message.
+      default: ""
+      selector:
+        entity:
+          domain: ai_task
+    ai_instructions:
+      name: AI rewrite instructions
+      description: |
+        System prompt sent to the AI Task. The original weather text is appended after this under “Message:”.
+        The default enforces exact facts, raw text output, and brevity for clean TTS.
+      default: |
+        Rewrite the message below for clear, natural TTS in a crisp TV-meteorologist voice.
+        Hard rules:
+        • Preserve every fact exactly: all numbers, units (°, %, mph), times, day names, and weather terms.
+        • Do not invent, omit, reorder, round, or restate any facts. Keep original sequencing of info.
+        • Output RAW TEXT ONLY — no quotes, code fences, YAML/JSON, greetings, preambles, or sign-offs.
+        • 2–4 short sentences, ≤55 words, plain vocabulary, no emojis, no hashtags, no ALL CAPS.
+        • If precipitation timing/probability exists, mention it once using the same daypart/time and %; otherwise omit.
+        • Keep symbols and formatting as given (°, %, AM/PM). If the input is “Forecast not available.” return it unchanged.
+      selector:
+        text:
+          multiline: true
+    # TTS and output
+    tts_engine:
+      name: TTS engine entity
+      description: |
+        TTS platform entity for `tts.speak` (e.g., `tts.piper`). Some engines ignore the `voice` option.
+        If unsupported, nothing will be spoken.
+      selector:
+        entity:
+          domain: tts
+    speakers:
+      name: Speaker(s)
+      description: |
+        One or more `media_player` entities that will play the TTS. Volume is set on all speakers before speaking,
+        then the message is spoken to each speaker individually. For groups, target the group entity.
+      selector:
+        entity:
+          domain: media_player
+          multiple: true
+    pre_speak_volume:
+      name: Pre-speak volume level
+      description: |
+        Volume (0.00–1.00) applied via `media_player.volume_set` immediately before speaking.
+        Use to ensure audibility. Set your preferred steady level here if you don’t want volume fluctuations.
+      default: 0.6
+      selector:
+        number:
+          min: 0
+          max: 1
+          step: 0.01
+          mode: slider
+    tts_cache:
+      name: Cache TTS audio
+      description: |
+        If **on**, allows the TTS engine to reuse audio for identical messages (when supported), reducing latency.
+      default: true
+      selector:
+        boolean: {}
+    tts_voice:
+      name: TTS voice (if supported)
+      description: |
+        Voice identifier for your TTS engine (e.g., Piper `en_US-carlin-high`). Engines that don’t support voice selection
+        will ignore this.
+      default: "en_US-carlin-high"
+      selector:
+        text: {}
+    pre_roll_ms:
+      name: TTS pre-roll (ms)
+      description: |
+        Adds a short silence **before** each `tts.speak` call to avoid the first syllable being cut off on some speakers.
+        Increase if you still hear choppiness; decrease if you want faster starts. Applied per speaker, per message.
+      default: 150
+      selector:
+        number:
+          min: 0
+          max: 300
+          step: 10
+          unit_of_measurement: ms
+          mode: slider
+    time_toggle_entity:
+      name: Time-based toggle
+      description: Optional entity that must be 'on' to enable time-based forecast alerts. If not selected, always enabled.
+      default: ""
+      selector:
+        entity: {}
+    presence_check_enabled:
+      name: Enable presence check
+      description: If enabled, announcements will only be made if at least one selected presence sensor is 'on' (e.g., someone is home).
+      default: false
+      selector:
+        boolean: {}
+    presence_sensors:
+      name: Presence sensors
+      description: Select one or more binary sensors indicating presence. Used only if presence check is enabled.
+      selector:
+        entity:
+          domain: binary_sensor
+          multiple: true
+    enable_current_change_announce:
+      name: Enable current weather change announcements
+      description: Announce when the current weather changes to precipitation (e.g., starts raining).
+      default: false
+      selector:
+        boolean: {}
+    enable_upcoming_change_announce:
+      name: Enable upcoming weather change announcements
+      description: Announce a few minutes before an expected weather change to precipitation based on hourly forecast.
+      default: false
+      selector:
+        boolean: {}
+    minutes_before_announce:
+      name: Minutes before expected change
+      description: How many minutes before the expected change to announce it.
+      default: 5
+      selector:
+        number:
+          min: 1
+          max: 30
+          step: 1
+          unit_of_measurement: min
+mode: single
+triggers:
+  - trigger: time_pattern
+    hours: !input hour_pattern
+    minutes: !input minute_mark
+    id: time_based
+  - trigger: state
+    entity_id: !input weather_entity
+    id: current_change
+  - trigger: time_pattern
+    minutes: /5
+    id: upcoming_change
+conditions:
+  - condition: template
+    value_template: >-
+      {% set enabled = !input presence_check_enabled %}
+      {% set sensors = !input presence_sensors | default([]) %}
+      {{ not enabled or sensors | length == 0 or (sensors | select('is_state', 'on') | list | length > 0) }}
+  - condition: or
+    conditions:
+      - condition: and
+        conditions:
+          - condition: trigger
+            id: time_based
+          - condition: time
+            after: !input start_time
+            before: !input end_time
+            weekday: !input weekdays
+          - condition: template
+            value_template: >-
+              {% set toggle = !input time_toggle_entity | default('') %}
+              {{ toggle == '' or is_state(toggle, 'on') }}
+      - condition: and
+        conditions:
+          - condition: trigger
+            id: current_change
+          - condition: template
+            value_template: "{{ !input enable_current_change_announce }}"
+      - condition: and
+        conditions:
+          - condition: trigger
+            id: upcoming_change
+          - condition: template
+            value_template: "{{ !input enable_upcoming_change_announce }}"
+actions:
+  - variables:
+      key: !input weather_entity
+  - choose:
+      - conditions:
+          - condition: trigger
+            id: time_based
+        sequence:
+          - action: weather.get_forecasts
+            target:
+              entity_id: !input weather_entity
+            data:
+              type: daily
+            response_variable: d
+          - action: weather.get_forecasts
+            target:
+              entity_id: !input weather_entity
+            data:
+              type: hourly
+            response_variable: h
+          - variables:
+              precip_threshold: !input precip_threshold
+              hours_ahead: !input hours_ahead
+              now_hour: "{{ now().hour }}"
+              day_name: "{{ (now() | as_timestamp | timestamp_custom('%A', true)) }}"
+              greeting: >-
+                {% if 5 <= now_hour <= 11 %}Good morning{% elif 12 <= now_hour <= 17 %}
+                Good afternoon{% else %}Good evening{% endif %}
+              now_temp: "{{ state_attr(key,'temperature') }}"
+              now_hum: "{{ state_attr(key,'humidity') }}"
+              now_cond_h: >-
+                {% set s = (states(key) or '') | lower %}
+                {% set s = s | replace('_',' ') | replace('-',' ') %}
+                {% set s = s | replace('partlycloudy','partly cloudy') | replace('clearnight','clear night') %}
+                {{ s | trim }}
+              daily_list: "{{ d.get(key,{}).get('forecast',[]) }}"
+              today: "{{ daily_list[0] if daily_list|length>0 else dict() }}"
+              high: "{{ today.get('temperature') }}"
+              low: "{{ today.get('templow', today.get('temperature_low')) }}"
+              today_cond_h: >-
+                {% set raw = (today.get('condition') or states(key) or '') | lower %}
+                {% set s = raw | replace('_',' ') | replace('-',' ') %}
+                {% set s = s | replace('partlycloudy','partly cloudy') | replace('clearnight','clear night') %}
+                {{ s | trim }}
+              now_norm: "{{ now_cond_h | replace(' ','') }}"
+              today_norm: "{{ today_cond_h | replace(' ','') }}"
+              mention_expect: "{{ today_cond_h != '' and today_norm != now_norm }}"
+              hourly_list: "{{ h.get(key,{}).get('forecast',[]) }}"
+              next_hours: "{{ hourly_list[:hours_ahead] if hourly_list else [] }}"
+              hits: >-
+                {{ (next_hours
+                    | selectattr('precipitation_probability','defined')
+                    | selectattr('precipitation_probability','ge', precip_threshold)
+                    | list) }}
+              first_hit: "{{ hits[0] if hits|length>0 else dict() }}"
+              hit_pp: "{{ first_hit.get('precipitation_probability') }}"
+              hit_cond_h: >-
+                {% set raw = (first_hit.get('condition','') | lower) %}
+                {% set s = raw | replace('_',' ') | replace('-',' ') %}
+                {% set s = s | replace('partlycloudy','partly cloudy') | replace('clearnight','clear night') %}
+                {{ s | trim }}
+              hit_ts: >-
+                {% set t = none %}
+                {% if first_hit.get('datetime') %}
+                  {% set t = as_datetime(first_hit.get('datetime')) | as_timestamp %}
+                {% endif %}
+                {{ t }}
+              hit_clock: >-
+                {% set out = '' %}
+                {% if hit_ts is not none %}
+                  {% set out = (hit_ts | timestamp_custom('%I %p', true)) | replace(' 0',' ') %}
+                {% endif %}
+                {{ out }}
+              hit_hour_num: >-
+                {% set out = 0 %}
+                {% if hit_ts is not none %}
+                  {% set out = (hit_ts | timestamp_custom('%H', true)) | int %}
+                {% endif %}
+                {{ out }}
+              hit_daypart: >-
+                {% set hnum = hit_hour_num %}
+                {% if 5 <= hnum <= 11 %}this morning{% elif 12 <= hnum <= 17 %}this afternoon
+                {% elif 18 <= hnum <= 22 %}this evening{% else %}overnight{% endif %}
+              precip_kind: >-
+                {% if 'snow' in hit_cond_h %}snow{% elif 'sleet' in hit_cond_h or 'hail' in hit_cond_h %}mixed precipitation
+                {% elif hit_cond_h %}rain{% else %}precipitation{% endif %}
+              msg: >-
+                {% set p = [] %}
+                {% set p = p + [greeting ~ '! ' ~ day_name ~ "'s forecast."] %}
+                {% set now_bits = [] %}
+                {% if now_cond_h %}{% set now_bits = now_bits + [now_cond_h | capitalize] %}{% endif %}
+                {% if now_temp is not none %}{% set now_bits = now_bits + [ (now_temp | round(0) ~ '°') ] %}{% endif %}
+                {% if now_hum is not none %}{% set now_bits = now_bits + [ ('humidity ' ~ now_hum ~ '%') ] %}{% endif %}
+                {% if now_bits | length > 0 %}{% set p = p + ['Right now: ' ~ (now_bits | join(', ')) ~ '.'] %}{% endif %}
+                {% set today_bits = [] %}
+                {% if mention_expect %}{% set today_bits = today_bits + ['Expect ' ~ today_cond_h ~ '.'] %}{% endif %}
+                {% if high is not none %}{% set today_bits = today_bits + ['High ' ~ (high | round(0)) ~ '°.'] %}{% endif %}
+                {% if low is not none %}{% set today_bits = today_bits + ['Low ' ~ (low | round(0)) ~ '°.'] %}{% endif %}
+                {% if today_bits | length > 0 %}{% set p = p + [ today_bits | join(' ') ] %}{% endif %}
+                {% if hits | length > 0 and hit_pp is not none %}
+                  {% set phr = precip_kind ~ ' chances ' ~ hit_daypart %}
+                  {% if hit_clock %}{% set phr = phr ~ ' around ' ~ hit_clock %}{% endif %}
+                  {% set phr = phr ~ ': ' ~ (hit_pp | int) ~ '%.' %}
+                  {% set p = p + [ phr ] %}
+                {% endif %}
+                {{ p | join(' ') if p|length > 0 else 'Forecast not available.' }}
+              i_ai: !input enable_ai
+              i_ai_task: !input ai_task_entity
+              i_ai_text: !input ai_instructions
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ i_ai and (i_ai_task | default('') | string) != '' }}"
+                sequence:
+                  - action: ai_task.generate_data
+                    data:
+                      entity_id: !input ai_task_entity
+                      task_name: weather message
+                      instructions: |-
+                        {{ i_ai_text }}
+                        Message:
+                        "{{ msg | replace('"','\\"') }}"
+                    response_variable: aimsg
+                  - variables:
+                      spoken: "{{ aimsg.data | default(msg) }}"
+            default:
+              - variables:
+                  spoken: "{{ msg }}"
+      - conditions:
+          - condition: trigger
+            id: current_change
+        sequence:
+          - variables:
+              now_cond_raw: "{{ trigger.to_state.state | lower }}"
+              now_cond_h: >-
+                {% set s = now_cond_raw %}
+                {% set s = s | replace('_',' ') | replace('-',' ') %}
+                {% set s = s | replace('partlycloudy','partly cloudy') | replace('clearnight','clear night') %}
+                {{ s | trim }}
+              precip_conds: ['rainy', 'pouring', 'hail', 'snowy', 'snowy-rainy', 'lightning-rainy']
+              is_change_to_precip: "{{ trigger.to_state.state in precip_conds and trigger.from_state.state not in precip_conds }}"
+          - if:
+              - "{{ is_change_to_precip }}"
+            then:
+              - variables:
+                  spoken: "Weather update: it is now {{ now_cond_h }}."
+      - conditions:
+          - condition: trigger
+            id: upcoming_change
+        sequence:
+          - action: weather.get_forecasts
+            target:
+              entity_id: !input weather_entity
+            data:
+              type: hourly
+            response_variable: h
+          - variables:
+              hourly_list: "{{ h.get(key,{}).get('forecast',[]) }}"
+              now: "{{ now() }}"
+              upcoming: "{{ hourly_list | selectattr('datetime','gt', now.isoformat()) | sort(attribute='datetime') | list }}"
+              next_hit: "{{ upcoming[0] if upcoming else {} }}"
+              next_dt: "{{ next_hit.get('datetime') }}"
+              next_ts: "{{ as_timestamp(next_dt) if next_dt else none }}"
+              min_to: "{{ ((next_ts - as_timestamp(now)) / 60) | round(0) if next_ts else 0 }}"
+              next_cond_raw: "{{ next_hit.get('condition','') | lower }}"
+              next_cond_h: >-
+                {% set s = next_cond_raw %}
+                {% set s = s | replace('_',' ') | replace('-',' ') %}
+                {% set s = s | replace('partlycloudy','partly cloudy') | replace('clearnight','clear night') %}
+                {{ s | trim }}
+              now_cond_raw: "{{ states(key) | lower }}"
+              now_is_precip: "{{ 'rain' in now_cond_raw or 'snow' in now_cond_raw or 'hail' in now_cond_raw or 'pour' in now_cond_raw or 'lightning' in now_cond_raw }}"
+              next_is_precip: "{{ 'rain' in next_cond_raw or 'snow' in next_cond_raw or 'hail' in next_cond_raw or 'pour' in next_cond_raw or 'lightning' in next_cond_raw }}"
+              should_announce: "{{ next_ts is not none and next_is_precip and not now_is_precip and 0 < min_to <= !input minutes_before_announce }}"
+              precip_kind: >-
+                {% if 'snow' in next_cond_h %}snow{% elif 'sleet' in next_cond_h or 'hail' in next_cond_h %}mixed precipitation
+                {% elif next_cond_h %}rain{% else %}precipitation{% endif %}
+          - if:
+              - "{{ should_announce }}"
+            then:
+              - variables:
+                  spoken: "Weather alert: {{ precip_kind }} expected in about {{ min_to }} minutes."
+  - if:
+      - "{{ spoken | default('') | trim != '' }}"
+    then:
+      - action: media_player.volume_set
+        target:
+          entity_id: !input speakers
+        data:
+          volume_level: !input pre_speak_volume
+      - repeat:
+          for_each: !input speakers
+          sequence:
+            - delay:
+                milliseconds: !input pre_roll_ms
+            - action: tts.speak
+              target:
+                entity_id: !input tts_engine
+              data:
+                cache: !input tts_cache
+                media_player_entity_id: "{{ repeat.item }}"
+                message: "{{ spoken | trim }}"
+                options:
+                  voice: !input tts_voice
