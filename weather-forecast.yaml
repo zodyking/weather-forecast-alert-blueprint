@@ -15,7 +15,7 @@ blueprint:
     required_settings:
       name: Required Settings
       icon: mdi:asterisk
-      collapsed: false
+      collapsed: true
       input:
         weather_entity:
           name: Weather Entity
@@ -48,6 +48,19 @@ blueprint:
             entity:
               domain: ai_task
           default: []
+        use_ai_rewrite:
+          name: Use AI Rewrite
+          description: Toggle to enable AI rephrasing of the weather messages. If disabled, the raw crafted message will be spoken directly.
+          default: true
+          selector:
+            boolean: {}
+        ai_rewrite_prompt:
+          name: AI Rewrite Prompt
+          description: The prompt template used for AI rephrasing. Customize this to adjust how the AI rewrites the message while preserving facts.
+          default: "Rewrite the message below for clear, natural TTS in a crisp TV-meteorologist voice.\nHard rules:\n- Preserve every fact exactly: all numbers, units (degrees, %, mph), times, day names, and weather terms.\n- Do not invent, omit, reorder, round, or restate any facts. Keep original sequencing of info.\n- Output RAW TEXT ONLY — no quotes, code fences, YAML/JSON, greetings, preambles, or sign-offs.\n- 2–4 short sentences, ≤55 words, plain vocabulary, no emojis, no hashtags, no ALL CAPS.\n- If precipitation timing/probability exists, mention it once using the same daypart/time and %; otherwise omit.\n- Keep symbols and formatting as given (%, AM/PM). If the input is “Forecast not available.” return it unchanged.\n"
+          selector:
+            text:
+              multiline: true
     time_based_settings:
       name: Time-Based Announcements
       icon: mdi:clock-outline
@@ -135,6 +148,46 @@ blueprint:
               min: 0
               max: 100
               unit_of_measurement: "%"
+        hours_ahead:
+          name: Hours Ahead for Forecast
+          description: The number of hours ahead to check for precipitation in hourly forecasts. Adjust to control how far into the future precipitation mentions are considered.
+          default: 24
+          selector:
+            number:
+              min: 1
+              max: 48
+              unit_of_measurement: hours
+    tts_settings:
+      name: TTS Settings
+      icon: mdi:speaker
+      collapsed: true
+      input:
+        voice:
+          name: TTS Voice
+          description: The voice option for the TTS engine. Specify the voice identifier compatible with your TTS service.
+          default: "en_US-carlin-high"
+          selector:
+            text: {}
+        volume_level:
+          name: Volume Level
+          description: The volume level for announcements (range 0 to 1, where 1 is maximum volume).
+          default: 0.6
+          selector:
+            number:
+              min: 0
+              max: 1
+              step: 0.01
+              mode: slider
+        preroll_ms:
+          name: TTS Pre-roll (ms)
+          description: Delay in milliseconds before speaking to allow speakers time to wake up and avoid audio cutoff.
+          default: 150
+          selector:
+            number:
+              min: 0
+              max: 1000
+              step: 50
+              unit_of_measurement: ms
 trigger_variables:
   enable_time_based: !input enable_time_based
   enable_presence_triggered: !input enable_presence_triggered
@@ -213,7 +266,7 @@ action:
             response_variable: h
           - variables:
               precip_threshold: !input precip_threshold
-              hours_ahead: 24
+              hours_ahead: !input hours_ahead
               now_hour: "{{ now().hour }}"
               day_name: "{{ (now() | as_timestamp | timestamp_custom('%A', true)) }}"
               greeting: "{% if 5 <= now_hour <= 11 %}Good morning{% elif 12 <= now_hour <= 17 %} Good afternoon{% else %}Good evening{% endif %}"
@@ -240,9 +293,9 @@ action:
               hit_daypart: "{% set hnum = hit_hour_num %} {% if 5 <= hnum <= 11 %}this morning{% elif 12 <= hnum <= 17 %}this afternoon {% elif 18 <= hnum <= 22 %}this evening{% else %}overnight{% endif %}"
               precip_kind: "{% if 'snow' in hit_cond_h %}snow{% elif 'sleet' in hit_cond_h or 'hail' in hit_cond_h %}mixed precipitation {% elif hit_cond_h %}rain{% else %}precipitation{% endif %}"
               msg: "{% set p = [] %} {% set p = p + [greeting ~ '! ' ~ day_name ~ \"'s forecast.\"] %} {% set now_bits = [] %} {% if now_cond_h %}{% set now_bits = now_bits + [now_cond_h | capitalize] %}{% endif %} {% if now_temp is not none %}{% set now_bits = now_bits + [ (now_temp | round(0) ~ ' degrees') ] %}{% endif %} {% if now_hum is not none %}{% set now_bits = now_bits + [ ('humidity ' ~ now_hum ~ '%') ] %}{% endif %} {% if now_bits | length > 0 %}{% set p = p + ['Right now: ' ~ (now_bits | join(', ')) ~ '.'] %}{% endif %} {% set today_bits = [] %} {% if mention_expect %}{% set today_bits = today_bits + ['Expect ' ~ today_cond_h ~ '.'] %}{% endif %} {% if high is not none %}{% set today_bits = today_bits + ['High ' ~ (high | round(0)) ~ ' degrees.'] %}{% endif %} {% if low is not none %}{% set today_bits = today_bits + ['Low ' ~ (low | round(0)) ~ ' degrees.'] %}{% endif %} {% if today_bits | length > 0 %}{% set p = p + [ today_bits | join(' ') ] %}{% endif %} {% if hits | length > 0 and hit_pp is not none %} {% set phr = precip_kind ~ ' chances ' ~ hit_daypart %} {% if hit_clock %}{% set phr = phr ~ ' around ' ~ hit_clock %}{% endif %} {% set phr = phr ~ ': ' ~ (hit_pp | int) ~ '%.' %} {% set p = p + [ phr ] %} {% endif %} {{ p | join(' ') if p|length > 0 else 'Forecast not available.' }}"
-              i_ai: true
+              i_ai: !input use_ai_rewrite
               i_ai_task: !input ai_task_entity
-              i_ai_text: "Rewrite the message below for clear, natural TTS in a crisp TV-meteorologist voice.\nHard rules:\n- Preserve every fact exactly: all numbers, units (degrees, %, mph), times, day names, and weather terms.\n- Do not invent, omit, reorder, round, or restate any facts. Keep original sequencing of info.\n- Output RAW TEXT ONLY — no quotes, code fences, YAML/JSON, greetings, preambles, or sign-offs.\n- 2–4 short sentences, ≤55 words, plain vocabulary, no emojis, no hashtags, no ALL CAPS.\n- If precipitation timing/probability exists, mention it once using the same daypart/time and %; otherwise omit.\n- Keep symbols and formatting as given (%, AM/PM). If the input is “Forecast not available.” return it unchanged.\n"
+              i_ai_text: !input ai_rewrite_prompt
           - choose:
               - conditions:
                   - condition: template
@@ -269,9 +322,9 @@ action:
               from_cond_raw: "{{ trigger.from_state.state | default('unknown') | lower }}"
               is_change: "{{ now_cond_raw != from_cond_raw }}"
               msg: "Weather update: conditions have changed to {{ now_cond_h }}."
-              i_ai: true
+              i_ai: !input use_ai_rewrite
               i_ai_task: !input ai_task_entity
-              i_ai_text: "Rewrite the message below for clear, natural TTS in a crisp TV-meteorologist voice.\nHard rules:\n- Preserve every fact exactly: all numbers, units (degrees, %, mph), times, day names, and weather terms.\n- Do not invent, omit, reorder, round, or restate any facts. Keep original sequencing of info.\n- Output RAW TEXT ONLY — no quotes, code fences, YAML/JSON, greetings, preambles, or sign-offs.\n- 2–4 short sentences, ≤55 words, plain vocabulary, no emojis, no hashtags, no ALL CAPS.\n- If precipitation timing/probability exists, mention it once using the same daypart/time and %; otherwise omit.\n- Keep symbols and formatting as given (%, AM/PM). If the input is “Forecast not available.” return it unchanged.\n"
+              i_ai_text: !input ai_rewrite_prompt
           - if: "{{ is_change }}"
             then:
               - choose:
@@ -315,9 +368,9 @@ action:
               should_announce: "{{ next_ts is not none and next_is_precip and not now_is_precip and 0 < min_to <= minutes_before_announce }}"
               precip_kind: "{% if 'snow' in next_cond_h %}snow{% elif 'sleet' in next_cond_h or 'hail' in next_cond_h %}mixed precipitation {% elif next_cond_h %}rain{% else %}precipitation{% endif %}"
               msg: "Weather alert: {{ precip_kind }} expected in about {{ min_to }} minutes."
-              i_ai: true
+              i_ai: !input use_ai_rewrite
               i_ai_task: !input ai_task_entity
-              i_ai_text: "Rewrite the message below for clear, natural TTS in a crisp TV-meteorologist voice.\nHard rules:\n- Preserve every fact exactly: all numbers, units (degrees, %, mph), times, day names, and weather terms.\n- Do not invent, omit, reorder, round, or restate any facts. Keep original sequencing of info.\n- Output RAW TEXT ONLY — no quotes, code fences, YAML/JSON, greetings, preambles, or sign-offs.\n- 2–4 short sentences, ≤55 words, plain vocabulary, no emojis, no hashtags, no ALL CAPS.\n- If precipitation timing/probability exists, mention it once using the same daypart/time and %; otherwise omit.\n- Keep symbols and formatting as given (%, AM/PM). If the input is “Forecast not available.” return it unchanged.\n"
+              i_ai_text: !input ai_rewrite_prompt
           - if: "{{ should_announce }}"
             then:
               - choose:
@@ -342,12 +395,12 @@ action:
         target:
           entity_id: !input speakers
         data:
-          volume_level: 0.6
+          volume_level: !input volume_level
       - repeat:
           for_each: !input speakers
           sequence:
             - delay:
-                milliseconds: 150
+                milliseconds: !input preroll_ms
             - action: tts.speak
               target:
                 entity_id: !input tts_engine
@@ -356,5 +409,5 @@ action:
                 media_player_entity_id: "{{ repeat.item }}"
                 message: "{{ spoken | trim }}"
                 options:
-                  voice: "en_US-carlin-high"
+                  voice: !input voice
 mode: single
