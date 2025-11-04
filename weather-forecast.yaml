@@ -36,6 +36,37 @@ blueprint:
             entity:
               domain: media_player
               multiple: true
+    tts_settings:
+      name: TTS Settings
+      icon: mdi:account-voice
+      collapsed: true
+      input:
+        voice:
+          name: TTS Voice
+          description: The voice option for the TTS engine. Specify the voice identifier compatible with your TTS service.
+          default: "en_US-carlin-high"
+          selector:
+            text: {}
+        volume_level:
+          name: Volume Level
+          description: The volume level for announcements (range 0 to 1, where 1 is maximum volume).
+          default: 0.6
+          selector:
+            number:
+              min: 0
+              max: 1
+              step: 0.01
+              mode: slider
+        preroll_ms:
+          name: TTS Pre-roll (ms)
+          description: Delay in milliseconds before speaking to allow speakers time to wake up and avoid audio cutoff.
+          default: 150
+          selector:
+            number:
+              min: 0
+              max: 1000
+              step: 50
+              unit_of_measurement: ms
     ai_settings:
       name: AI Rephrasing (Optional)
       icon: mdi:robot
@@ -90,6 +121,27 @@ blueprint:
           default: "21:00:00"
           selector:
             time: {}
+        days_of_week:
+          name: Days of the Week
+          description: Select the days of the week for time-based announcements to occur. If none selected, it will run every day.
+          selector:
+            select:
+              multiple: true
+              options:
+                - label: Monday
+                  value: mon
+                - label: Tuesday
+                  value: tue
+                - label: Wednesday
+                  value: wed
+                - label: Thursday
+                  value: thu
+                - label: Friday
+                  value: fri
+                - label: Saturday
+                  value: sat
+                - label: Sunday
+                  value: sun
     presence_settings:
       name: Presence-Triggered Announcements
       icon: mdi:motion-sensor
@@ -98,7 +150,7 @@ blueprint:
         enable_presence_triggered:
           name: Enable Presence-Triggered Announcements
           description: Toggle to enable weather announcements when presence is detected (e.g., someone arrives home), using the specified presence sensors.
-          default: true
+          default: false
           selector:
             boolean: {}
         presence_sensors:
@@ -128,11 +180,12 @@ blueprint:
         minutes_before_announce:
           name: Minutes Before Upcoming Announcement
           description: The number of minutes before an upcoming weather change (e.g., rain starting) that an announcement should be made. Used for upcoming change alerts.
-          default: 5
+          default: 30
           selector:
             number:
-              min: 1
+              min: 15
               max: 60
+              step: 15
               unit_of_measurement: minutes
     precip_settings:
       name: Precipitation Settings
@@ -157,37 +210,6 @@ blueprint:
               min: 1
               max: 48
               unit_of_measurement: hours
-    tts_settings:
-      name: TTS Settings
-      icon: mdi:speaker
-      collapsed: true
-      input:
-        voice:
-          name: TTS Voice
-          description: The voice option for the TTS engine. Specify the voice identifier compatible with your TTS service.
-          default: "en_US-carlin-high"
-          selector:
-            text: {}
-        volume_level:
-          name: Volume Level
-          description: The volume level for announcements (range 0 to 1, where 1 is maximum volume).
-          default: 0.6
-          selector:
-            number:
-              min: 0
-              max: 1
-              step: 0.01
-              mode: slider
-        preroll_ms:
-          name: TTS Pre-roll (ms)
-          description: Delay in milliseconds before speaking to allow speakers time to wake up and avoid audio cutoff.
-          default: 150
-          selector:
-            number:
-              min: 0
-              max: 1000
-              step: 50
-              unit_of_measurement: ms
 trigger_variables:
   enable_time_based: !input enable_time_based
   enable_presence_triggered: !input enable_presence_triggered
@@ -221,6 +243,7 @@ condition:
             before: !input end_time
           - condition: template
             value_template: "{{ enable_time_based }}"
+          - "{{ not days_of_week or now().strftime('%a').lower()[:3] in days_of_week }}"
       - condition: and
         conditions:
           - condition: trigger
