@@ -15,7 +15,7 @@ blueprint:
     weather_data:
       name: Weather Data
       icon: mdi:asterisk
-      collapsed: false
+      collapsed: true
       input:
         weather_entity:
           name: Weather Entity
