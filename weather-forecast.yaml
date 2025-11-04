@@ -1,7 +1,8 @@
 blueprint:
   name: Weather — Forecast TTS (AI Optional)
   description: |
-    ![Weather Forecast Alerts banner](https://raw.githubusercontent.com/zodyking/weather-forecast-alert-blueprint/refs/heads/main/imageforecast.png)
+    ![Weather Forecast Alerts banner](https://raw.githubusercontent.com/zodyking/weather-forecast-alert-blueprint/main/imageforecast.png)
+
     Create a concise, engaging weather forecast announcement system in Home Assistant. This blueprint uses TTS to deliver TV-style updates via your speakers, pulling real-time data from daily and hourly forecasts. It highlights key details like temperature, conditions, humidity, and probable precipitation (rain or snow) with timing, daypart, and probability percentages.
 
     Optionally, integrate AI to rephrase messages for a more natural, professional tone—without altering any facts.
@@ -16,7 +17,7 @@ blueprint:
     - Adjust "Precipitation probability threshold" and "Hours ahead" to fine-tune rain/snow alerts.
     - Disable "Use AI rewrite" for direct, unprocessed messages.
     - If audio starts late, bump up "TTS pre-roll (ms)" to wake devices properly.
-   
+  author: ZodyKing
   domain: automation
   source_url: https://github.com/zodyking/weather-forecast-alert-blueprint/blob/main/weather-forecast.yaml
   input:
