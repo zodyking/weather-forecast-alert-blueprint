@@ -1,6 +1,7 @@
 blueprint:
   name: Weather — Forecast TTS (AI Optional)
   description: |
+    ![Weather Forecast Alerts banner](https://raw.githubusercontent.com/zodyking/weather-forecast-alert-blueprint/refs/heads/main/imageforecast.png)
     Speak a concise, TV-weatherman-style forecast to one or more speakers on a schedule.
     Pulls daily + hourly forecasts, mentions likely rain/snow with daypart and %, and (optionally) rewrites via an AI Task without changing facts.
     Tips:
@@ -20,29 +21,13 @@ blueprint:
         entity:
           domain: weather
     # Master toggles
-    time_toggle_entity:
-      name: Time-based forecast toggle
-      description: Optional input_boolean or switch. If selected and 'on', time-based forecasts are enabled. If 'off' or not selected, time-based alerts are disabled.
-      default: ""
-      selector:
-        entity:
-          filter:
-            domain: [input_boolean, switch]
-    enable_presence_triggered:
-      name: Enable presence-triggered forecasts
-      description: If enabled, forecasts will be announced whenever any selected presence sensor turns 'on' (e.g., someone arrives home).
-      default: false
+    enable_time_based:
+      name: Enable time-based forecasts
+      description: If enabled, forecasts will be announced according to the scheduled time patterns. If disabled, time-based alerts are ignored.
+      default: true
       selector:
         boolean: {}
-    presence_sensors:
-      name: Presence sensors
-      description: One or more binary sensors. Used for presence-triggered announcements if enabled.
-      default: []
-      selector:
-        entity:
-          domain: binary_sensor
-          multiple: true
-    # Scheduling (only active if time toggle is on)
+    # Scheduling (only active if time-based is enabled)
     hour_pattern:
       name: Trigger — hour pattern
       description: |
@@ -87,6 +72,20 @@ blueprint:
           multiple: true
           mode: list
           options: [sun, mon, tue, wed, thu, fri, sat]
+    enable_presence_triggered:
+      name: Enable presence-triggered forecasts
+      description: If enabled, forecasts will be announced whenever any selected presence sensor turns 'on' (e.g., someone arrives home).
+      default: false
+      selector:
+        boolean: {}
+    presence_sensors:
+      name: Presence sensors
+      description: One or more binary sensors. Used for presence-triggered announcements if enabled.
+      default: []
+      selector:
+        entity:
+          domain: binary_sensor
+          multiple: true
     # Forecast logic tuning
     precip_threshold:
       name: Precipitation probability threshold (%)
@@ -258,9 +257,7 @@ conditions:
             before: !input end_time
             weekday: !input weekdays
           - condition: template
-            value_template: >-
-              {% set toggle = !input time_toggle_entity | default('') %}
-              {{ toggle == '' or is_state(toggle, 'on') }}
+            value_template: "{{ !input enable_time_based }}"
       - condition: and
         conditions:
           - condition: trigger
@@ -378,12 +375,12 @@ actions:
                 {% set now_bits = [] %}
                 {% if now_cond_h %}{% set now_bits = now_bits + [now_cond_h | capitalize] %}{% endif %}
                 {% if now_temp is not none %}{% set now_bits = now_bits + [ (now_temp | round(0) ~ ' degrees') ] %}{% endif %}
-                {% if now_hum is not none %}{% set now_bits = now_bits + [ ('humidity ' ~ now_hum ~ '%') ]}{% endif %}
+                {% if now_hum is not none %}{% set now_bits = now_bits + [ ('humidity ' ~ now_hum ~ '%') ] %}{% endif %}
                 {% if now_bits | length > 0 %}{% set p = p + ['Right now: ' ~ (now_bits | join(', ')) ~ '.'] %}{% endif %}
                 {% set today_bits = [] %}
                 {% if mention_expect %}{% set today_bits = today_bits + ['Expect ' ~ today_cond_h ~ '.'] %}{% endif %}
                 {% if high is not none %}{% set today_bits = today_bits + ['High ' ~ (high | round(0)) ~ ' degrees.'] %}{% endif %}
-                {% if low is not none %}{% set today_bits = today_bits + ['Low ' ~ (low | round(0)) ~ ' degrees.']}{% endif %}
+                {% if low is not none %}{% set today_bits = today_bits + ['Low ' ~ (low | round(0)) ~ ' degrees.'] %}{% endif %}
                 {% if today_bits | length > 0 %}{% set p = p + [ today_bits | join(' ') ] %}{% endif %}
                 {% if hits | length > 0 and hit_pp is not none %}
                   {% set phr = precip_kind ~ ' chances ' ~ hit_daypart %}
