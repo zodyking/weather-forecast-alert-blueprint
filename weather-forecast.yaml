@@ -531,10 +531,7 @@ actions:
             - if:
                 - "{{ is_state(repeat.item, 'playing') }}"
               then:
-                - wait_for_trigger:
-                    - platform: state
-                      entity_id: "{{ repeat.item }}"
-                      from: playing
+                - wait_template: "{{ not is_state(repeat.item, 'playing') }}"
             - delay:
                 milliseconds: !input pre_roll_ms
             - action: tts.speak
