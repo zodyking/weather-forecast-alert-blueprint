@@ -528,6 +528,13 @@ actions:
       - repeat:
           for_each: !input speakers
           sequence:
+            - if:
+                - "{{ is_state(repeat.item, 'playing') }}"
+              then:
+                - wait_for_trigger:
+                    - platform: state
+                      entity_id: "{{ repeat.item }}"
+                      from: playing
             - delay:
                 milliseconds: !input pre_roll_ms
             - action: tts.speak
