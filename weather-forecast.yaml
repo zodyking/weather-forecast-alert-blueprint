@@ -227,6 +227,12 @@ blueprint:
           step: 1
           unit_of_measurement: min
 
+trigger_variables:
+  enable_time_based: !input enable_time_based
+  enable_presence_triggered: !input enable_presence_triggered
+  enable_current_change_announce: !input enable_current_change_announce
+  enable_upcoming_change_announce: !input enable_upcoming_change_announce
+
 mode: single
 
 triggers:
@@ -257,25 +263,25 @@ conditions:
             before: !input end_time
             weekday: !input weekdays
           - condition: template
-            value_template: "{{ !input enable_time_based }}"
+            value_template: "{{ enable_time_based }}"
       - condition: and
         conditions:
           - condition: trigger
             id: presence_arrival
           - condition: template
-            value_template: "{{ !input enable_presence_triggered }}"
+            value_template: "{{ enable_presence_triggered }}"
       - condition: and
         conditions:
           - condition: trigger
             id: current_change
           - condition: template
-            value_template: "{{ !input enable_current_change_announce }}"
+            value_template: "{{ enable_current_change_announce }}"
       - condition: and
         conditions:
           - condition: trigger
             id: upcoming_change
           - condition: template
-            value_template: "{{ !input enable_upcoming_change_announce }}"
+            value_template: "{{ enable_upcoming_change_announce }}"
 
 actions:
   - variables:
