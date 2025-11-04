@@ -1,11 +1,23 @@
 blueprint:
   name: Weather — Forecast TTS (AI Optional)
   description: |
-    ![Weather Forecast Alerts banner](https://raw.githubusercontent.com/zodyking/weather-forecast-alert-blueprint/refs/heads/main/imageforecast.png)
-    Create a concise, engaging weather forecast announcement system in Home Assistant. This blueprint uses TTS to deliver TV-style updates via your speakers, 
-    pulling real-time data from daily and hourly forecasts. It highlights key details like temperature, conditions, humidity, and probable precipitation 
-    (rain or snow) with timing, daypart, and probability percentages.
-  author: Zodyking
+    ![Weather Forecast Alerts banner](https://raw.githubusercontent.com/zodyking/weather-forecast-alert-blueprint/main/imageforecast.png)
+
+    Create a concise, engaging weather forecast announcement system in Home Assistant. This blueprint uses TTS to deliver TV-style updates via your speakers, pulling real-time data from daily and hourly forecasts. It highlights key details like temperature, conditions, humidity, and probable precipitation (rain or snow) with timing, daypart, and probability percentages.
+
+    Optionally, integrate AI to rephrase messages for a more natural, professional tone—without altering any facts.
+
+    **Key Features:**
+    - Scheduled announcements (e.g., every few hours) or triggered by presence detection.
+    - Alerts for current weather changes or upcoming precipitation.
+    - Customizable thresholds for precip mentions, volume, voice, and more.
+
+    **Tips for Setup:**
+    - Select a weather entity supporting `weather.get_forecasts` (e.g., OpenWeatherMap for daily/hourly data).
+    - Adjust "Precipitation probability threshold" and "Hours ahead" to fine-tune rain/snow alerts.
+    - Disable "Use AI rewrite" for direct, unprocessed messages.
+    - If audio starts late, bump up "TTS pre-roll (ms)" to wake devices properly.
+  author: ZodyKing
   domain: automation
   source_url: https://github.com/zodyking/weather-forecast-alert-blueprint/blob/main/weather-forecast.yaml
   input:
@@ -13,8 +25,8 @@ blueprint:
       name: Weather Data
       description: This section allows you to select the primary weather entity that supplies current conditions and forecast information for generating announcements. Choose an entity compatible with Home Assistant's weather integrations, such as OpenWeatherMap, which supports both daily and hourly forecasts essential for detailed weather reports.
       icon: mdi:asterisk
-      collapsed: False
-      input:
+      collapsed: false
+      inputs:
         weather_entity:
           name: Weather Entity
           description: The weather entity in Home Assistant that provides current conditions and forecast data, including support for hourly and daily forecasts from services like OpenWeatherMap or similar integrations.
@@ -27,7 +39,7 @@ blueprint:
       description: Configure the Text-to-Speech (TTS) system here, including the engine for voice synthesis, media players for output, voice selection, volume control, and pre-roll delay to ensure smooth audio playback. These settings determine how announcements are spoken and delivered through your smart home devices.
       icon: mdi:account-voice
       collapsed: true
-      input:
+      inputs:
         tts_engine:
           name: TTS Engine
           description: The Text-to-Speech engine entity in Home Assistant responsible for generating spoken announcements, such as Piper TTS or Google Translate TTS.
@@ -74,7 +86,7 @@ blueprint:
       description: This optional section enables AI-based rephrasing of weather messages for a more natural, professional tone, similar to a TV meteorologist. Select an AI task entity, toggle rephrasing on or off, and customize the prompt to guide how the AI rewrites messages while strictly preserving all factual details.
       icon: mdi:robot
       collapsed: true
-      input:
+      inputs:
         ai_task_entity:
           name: AI Task Entity (Optional)
           description: An optional AI task entity (such as a Google AI integration) used to rephrase the weather messages for more natural-sounding TTS output. Leave blank if not using AI rephrasing.
@@ -100,7 +112,7 @@ blueprint:
       description: Set up scheduled weather announcements that occur at regular intervals throughout the day. This section includes toggles for enabling the feature, patterns for timing (e.g., every few hours), start and end times to restrict announcements to specific periods, and day-of-week selections to limit when they trigger.
       icon: mdi:clock-outline
       collapsed: true
-      input:
+      inputs:
         enable_time_based:
           name: Enable Time-Based Announcements
           description: Toggle to enable periodic weather announcements at set intervals during the day, based on the hour pattern, start time, and end time configurations.
@@ -152,7 +164,7 @@ blueprint:
       description: Enable weather updates triggered by presence detection, ideal for announcing forecasts upon arrival home. Configure sensors for detecting occupancy and toggle the feature to integrate with your smart home's motion or presence awareness.
       icon: mdi:motion-sensor
       collapsed: true
-      input:
+      inputs:
         enable_presence_triggered:
           name: Enable Presence-Triggered Announcements
           description: Toggle to enable weather announcements when presence is detected (e.g., someone arrives home), using the specified presence sensors.
@@ -172,7 +184,7 @@ blueprint:
       description: Control alerts for real-time and impending weather changes. This includes toggles for notifying about current condition shifts (e.g., starting to rain) and upcoming events, with adjustable timing for advance warnings to prepare users for weather shifts.
       icon: mdi:weather-cloudy-alert
       collapsed: true
-      input:
+      inputs:
         enable_current_change_announce:
           name: Enable Current Change Announcements
           description: Toggle to enable announcements when the current weather condition changes (e.g., from sunny to rainy).
@@ -200,7 +212,7 @@ blueprint:
       description: Fine-tune how precipitation is handled in forecasts and alerts. Set thresholds for probability to avoid unnecessary mentions and define the forecast window in hours to focus on near-term or extended predictions.
       icon: mdi:weather-rainy
       collapsed: true
-      input:
+      inputs:
         precip_threshold:
           name: Precipitation Probability Threshold (%)
           description: The minimum precipitation probability percentage required to mention potential rain/snow in forecasts. Lower values include more mentions; higher values are more conservative.
