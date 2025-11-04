@@ -2,13 +2,10 @@ blueprint:
   name: Weather — Forecast TTS (AI Optional)
   description: |
     ![Weather Forecast Alerts banner](https://raw.githubusercontent.com/zodyking/weather-forecast-alert-blueprint/refs/heads/main/imageforecast.png)
-    Speak a concise, TV-weatherman-style forecast to one or more speakers on a schedule.
-    Pulls daily + hourly forecasts, mentions likely rain/snow with daypart and %, and (optionally) rewrites via an AI Task without changing facts.
-    Tips:
-    • Use a weather entity that supports `weather.get_forecasts` (daily + hourly).
-    • Tune “Precipitation probability threshold” and “Hours ahead” to control precip mentions.
-    • Turn off “Use AI rewrite” to speak the raw crafted message.
-    • If your audio cuts in late, increase **TTS pre-roll (ms)** to give speakers time to wake up.
+    Create a concise, engaging weather forecast announcement system in Home Assistant. This blueprint uses TTS to deliver TV-style updates via your speakers, 
+    pulling real-time data from daily and hourly forecasts. It highlights key details like temperature, conditions, humidity, and probable precipitation 
+    (rain or snow) with timing, daypart, and probability percentages.
+  author: Zodyking
   domain: automation
   source_url: https://github.com/zodyking/weather-forecast-alert-blueprint/blob/main/weather-forecast.yaml
   input:
@@ -16,7 +13,7 @@ blueprint:
       name: Weather Data
       description: This section allows you to select the primary weather entity that supplies current conditions and forecast information for generating announcements. Choose an entity compatible with Home Assistant's weather integrations, such as OpenWeatherMap, which supports both daily and hourly forecasts essential for detailed weather reports.
       icon: mdi:asterisk
-      collapsed: true
+      collapsed: False
       input:
         weather_entity:
           name: Weather Entity
