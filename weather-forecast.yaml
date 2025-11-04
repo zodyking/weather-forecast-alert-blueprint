@@ -206,7 +206,7 @@ blueprint:
     # Weather change announcements
     enable_current_change_announce:
       name: Enable current weather change announcements
-      description: Announce when the current weather changes to precipitation (e.g., starts raining).
+      description: Announce when the current weather condition changes (e.g., from cloudy to rainy).
       default: false
       selector:
         boolean: {}
@@ -232,6 +232,7 @@ trigger_variables:
   enable_presence_triggered: !input enable_presence_triggered
   enable_current_change_announce: !input enable_current_change_announce
   enable_upcoming_change_announce: !input enable_upcoming_change_announce
+  minutes_before_announce: !input minutes_before_announce
 
 mode: single
 
@@ -429,13 +430,13 @@ actions:
                 {% set s = s | replace('_',' ') | replace('-',' ') %}
                 {% set s = s | replace('partlycloudy','partly cloudy') | replace('clearnight','clear night') %}
                 {{ s | trim }}
-              precip_conds: ['rainy', 'pouring', 'hail', 'snowy', 'snowy-rainy', 'lightning-rainy']
-              is_change_to_precip: "{{ trigger.to_state.state in precip_conds and (trigger.from_state.state | default('')) not in precip_conds }}"
+              from_cond_raw: "{{ trigger.from_state.state | default('unknown') | lower }}"
+              is_change: "{{ now_cond_raw != from_cond_raw }}"
           - if:
-              - "{{ is_change_to_precip }}"
+              - "{{ is_change }}"
             then:
               - variables:
-                  spoken: "Weather update: it is now {{ now_cond_h }}."
+                  spoken: "Weather update: conditions have changed to {{ now_cond_h }}."
 
       - conditions:
           - condition: trigger
@@ -464,7 +465,7 @@ actions:
               now_cond_raw: "{{ states(key) | lower }}"
               now_is_precip: "{{ 'rain' in now_cond_raw or 'snow' in now_cond_raw or 'hail' in now_cond_raw or 'pour' in now_cond_raw or 'lightning' in now_cond_raw }}"
               next_is_precip: "{{ 'rain' in next_cond_raw or 'snow' in next_cond_raw or 'hail' in next_cond_raw or 'pour' in next_cond_raw or 'lightning' in next_cond_raw }}"
-              should_announce: "{{ next_ts is not none and next_is_precip and not now_is_precip and 0 < min_to <= (!input minutes_before_announce) }}"
+              should_announce: "{{ next_ts is not none and next_is_precip and not now_is_precip and 0 < min_to <= minutes_before_announce }}"
               precip_kind: >-
                 {% if 'snow' in next_cond_h %}snow{% elif 'sleet' in next_cond_h or 'hail' in next_cond_h %}mixed precipitation
                 {% elif next_cond_h %}rain{% else %}precipitation{% endif %}
