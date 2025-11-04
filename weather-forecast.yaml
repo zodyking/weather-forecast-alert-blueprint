@@ -432,11 +432,32 @@ actions:
                 {{ s | trim }}
               from_cond_raw: "{{ trigger.from_state.state | default('unknown') | lower }}"
               is_change: "{{ now_cond_raw != from_cond_raw }}"
+              msg: "Weather update: conditions have changed to {{ now_cond_h }}."
+              i_ai: !input enable_ai
+              i_ai_task: !input ai_task_entity
+              i_ai_text: !input ai_instructions
           - if:
               - "{{ is_change }}"
             then:
-              - variables:
-                  spoken: "Weather update: conditions have changed to {{ now_cond_h }}."
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ i_ai and (i_ai_task | default('') | string) != '' }}"
+                    sequence:
+                      - action: ai_task.generate_data
+                        data:
+                          entity_id: !input ai_task_entity
+                          task_name: weather message
+                          instructions: |-
+                            {{ i_ai_text }}
+                            Message:
+                            "{{ msg | replace('"','\\"') }}"
+                        response_variable: aimsg
+                      - variables:
+                          spoken: "{{ aimsg.data | default(msg) }}"
+                default:
+                  - variables:
+                      spoken: "{{ msg }}"
 
       - conditions:
           - condition: trigger
@@ -469,11 +490,32 @@ actions:
               precip_kind: >-
                 {% if 'snow' in next_cond_h %}snow{% elif 'sleet' in next_cond_h or 'hail' in next_cond_h %}mixed precipitation
                 {% elif next_cond_h %}rain{% else %}precipitation{% endif %}
+              msg: "Weather alert: {{ precip_kind }} expected in about {{ min_to }} minutes."
+              i_ai: !input enable_ai
+              i_ai_task: !input ai_task_entity
+              i_ai_text: !input ai_instructions
           - if:
               - "{{ should_announce }}"
             then:
-              - variables:
-                  spoken: "Weather alert: {{ precip_kind }} expected in about {{ min_to }} minutes."
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ i_ai and (i_ai_task | default('') | string) != '' }}"
+                    sequence:
+                      - action: ai_task.generate_data
+                        data:
+                          entity_id: !input ai_task_entity
+                          task_name: weather message
+                          instructions: |-
+                            {{ i_ai_text }}
+                            Message:
+                            "{{ msg | replace('"','\\"') }}"
+                        response_variable: aimsg
+                      - variables:
+                          spoken: "{{ aimsg.data | default(msg) }}"
+                default:
+                  - variables:
+                      spoken: "{{ msg }}"
 
   - if:
       - "{{ spoken | default('') | trim != '' }}"
