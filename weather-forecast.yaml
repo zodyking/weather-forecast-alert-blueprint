@@ -1,7 +1,6 @@
 blueprint:
   name: Weather — Forecast TTS (AI Optional)
   description: |
-    Weather Forecast Alerts banner
     Speak a concise, TV-weatherman-style forecast to one or more speakers on a schedule.
     Pulls daily + hourly forecasts, mentions likely rain/snow with daypart and %, and (optionally) rewrites via an AI Task without changing facts.
     Tips:
@@ -138,12 +137,12 @@ blueprint:
       default: |
         Rewrite the message below for clear, natural TTS in a crisp TV-meteorologist voice.
         Hard rules:
-        • Preserve every fact exactly: all numbers, units (°C, %, mph), times, day names, and weather terms.
-        • Do not invent, omit, reorder, round, or restate any facts. Keep original sequencing of info.
-        • Output RAW TEXT ONLY — no quotes, code fences, YAML/JSON, greetings, preambles, or sign-offs.
-        • 2–4 short sentences, ≤55 words, plain vocabulary, no emojis, no hashtags, no ALL CAPS.
-        • If precipitation timing/probability exists, mention it once using the same daypart/time and %; otherwise omit.
-        • Keep symbols and formatting as given (°C, %, AM/PM). If the input is “Forecast not available.” return it unchanged.
+        - Preserve every fact exactly: all numbers, units (degrees, %, mph), times, day names, and weather terms.
+        - Do not invent, omit, reorder, round, or restate any facts. Keep original sequencing of info.
+        - Output RAW TEXT ONLY — no quotes, code fences, YAML/JSON, greetings, preambles, or sign-offs.
+        - 2–4 short sentences, ≤55 words, plain vocabulary, no emojis, no hashtags, no ALL CAPS.
+        - If precipitation timing/probability exists, mention it once using the same daypart/time and %; otherwise omit.
+        - Keep symbols and formatting as given (%, AM/PM). If the input is “Forecast not available.” return it unchanged.
       selector:
         text:
           multiline: true
@@ -384,7 +383,7 @@ actions:
                 {% set today_bits = [] %}
                 {% if mention_expect %}{% set today_bits = today_bits + ['Expect ' ~ today_cond_h ~ '.'] %}{% endif %}
                 {% if high is not none %}{% set today_bits = today_bits + ['High ' ~ (high | round(0)) ~ ' degrees.'] %}{% endif %}
-                {% if low is not none %}{% set today_bits = today_bits + ['Low ' ~ (low | round(0)) ~ ' degrees.'] %}{% endif %}
+                {% if low is not none %}{% set today_bits = today_bits + ['Low ' ~ (low | round(0)) ~ ' degrees.']}{% endif %}
                 {% if today_bits | length > 0 %}{% set p = p + [ today_bits | join(' ') ] %}{% endif %}
                 {% if hits | length > 0 and hit_pp is not none %}
                   {% set phr = precip_kind ~ ' chances ' ~ hit_daypart %}
