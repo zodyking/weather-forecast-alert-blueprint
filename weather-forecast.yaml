@@ -464,7 +464,7 @@ actions:
               now_cond_raw: "{{ states(key) | lower }}"
               now_is_precip: "{{ 'rain' in now_cond_raw or 'snow' in now_cond_raw or 'hail' in now_cond_raw or 'pour' in now_cond_raw or 'lightning' in now_cond_raw }}"
               next_is_precip: "{{ 'rain' in next_cond_raw or 'snow' in next_cond_raw or 'hail' in next_cond_raw or 'pour' in next_cond_raw or 'lightning' in next_cond_raw }}"
-              should_announce: "{{ next_ts is not none and next_is_precip and not now_is_precip and 0 < min_to <= !input minutes_before_announce }}"
+              should_announce: "{{ next_ts is not none and next_is_precip and not now_is_precip and 0 < min_to <= (!input minutes_before_announce) }}"
               precip_kind: >-
                 {% if 'snow' in next_cond_h %}snow{% elif 'sleet' in next_cond_h or 'hail' in next_cond_h %}mixed precipitation
                 {% elif next_cond_h %}rain{% else %}precipitation{% endif %}
