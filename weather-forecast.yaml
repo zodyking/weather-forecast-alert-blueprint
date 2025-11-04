@@ -325,33 +325,38 @@ actions:
                 {% set s = s | replace('_',' ') | replace('-',' ') %}
                 {% set s = s | replace('partlycloudy','partly cloudy') | replace('clearnight','clear night') %}
                 {{ s | trim }}
-              daily_list: "{{ d[key].forecast if d[key] else [] }}"
-              today: "{{ daily_list[0] if daily_list|length>0 else {} }}"
-              high: "{{ today.temperature if today else none }}"
-              low: "{{ today.templow if today else today.temperature_low if today else none }}"
+              daily_list: "{{ d.get(key,{}).get('forecast',[]) }}"
+              today: "{{ daily_list[0] if daily_list|length>0 else dict() }}"
+              high: "{{ today.get('temperature') }}"
+              low: "{{ today.get('templow', today.get('temperature_low')) }}"
               today_cond_h: >-
-                {% set raw = (today.condition or states(key) or '') | lower %}
+                {% set raw = (today.get('condition') or states(key) or '') | lower %}
                 {% set s = raw | replace('_',' ') | replace('-',' ') %}
                 {% set s = s | replace('partlycloudy','partly cloudy') | replace('clearnight','clear night') %}
                 {{ s | trim }}
               now_norm: "{{ now_cond_h | replace(' ','') }}"
               today_norm: "{{ today_cond_h | replace(' ','') }}"
               mention_expect: "{{ today_cond_h != '' and today_norm != now_norm }}"
-              hourly_list: "{{ h[key].forecast if h[key] else [] }}"
+              hourly_list: "{{ h.get(key,{}).get('forecast',[]) }}"
               next_hours: "{{ hourly_list[:hours_ahead] if hourly_list else [] }}"
               hits: >-
                 {{ (next_hours
                     | selectattr('precipitation_probability','defined')
                     | selectattr('precipitation_probability','ge', precip_threshold)
                     | list) }}
-              first_hit: "{{ hits[0] if hits|length>0 else {} }}"
-              hit_pp: "{{ first_hit.precipitation_probability if first_hit else none }}"
+              first_hit: "{{ hits[0] if hits|length>0 else dict() }}"
+              hit_pp: "{{ first_hit.get('precipitation_probability') }}"
               hit_cond_h: >-
-                {% set raw = (first_hit.condition or '') | lower %}
+                {% set raw = (first_hit.get('condition','') | lower) %}
                 {% set s = raw | replace('_',' ') | replace('-',' ') %}
                 {% set s = s | replace('partlycloudy','partly cloudy') | replace('clearnight','clear night') %}
                 {{ s | trim }}
-              hit_ts: "{{ as_timestamp(first_hit.datetime) if first_hit.datetime else none }}"
+              hit_ts: >-
+                {% set t = none %}
+                {% if first_hit.get('datetime') %}
+                  {% set t = as_datetime(first_hit.get('datetime')) | as_timestamp %}
+                {% endif %}
+                {{ t }}
               hit_clock: >-
                 {% set out = '' %}
                 {% if hit_ts is not none %}
@@ -465,14 +470,14 @@ actions:
               type: hourly
             response_variable: h
           - variables:
-              hourly_list: "{{ h[key].forecast if h[key] else [] }}"
-              now: "{{ now().isoformat() }}"
-              upcoming: "{{ hourly_list | selectattr('datetime','gt', now) | sort(attribute='datetime') | list }}"
+              hourly_list: "{{ h.get(key,{}).get('forecast',[]) }}"
+              now: "{{ now() }}"
+              upcoming: "{{ hourly_list | selectattr('datetime','gt', now.isoformat()) | sort(attribute='datetime') | list }}"
               next_hit: "{{ upcoming[0] if upcoming else {} }}"
-              next_dt: "{{ next_hit.datetime if next_hit else '' }}"
+              next_dt: "{{ next_hit.get('datetime') }}"
               next_ts: "{{ as_timestamp(next_dt) if next_dt else none }}"
-              min_to: "{{ ((next_ts - as_timestamp(now())) / 60) | round(0) if next_ts else 0 }}"
-              next_cond_raw: "{{ next_hit.condition | default('') | lower }}"
+              min_to: "{{ ((next_ts - as_timestamp(now)) / 60) | round(0) if next_ts else 0 }}"
+              next_cond_raw: "{{ next_hit.get('condition','') | lower }}"
               next_cond_h: >-
                 {% set s = next_cond_raw %}
                 {% set s = s | replace('_',' ') | replace('-',' ') %}
