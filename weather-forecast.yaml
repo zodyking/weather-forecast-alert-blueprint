@@ -12,10 +12,10 @@ blueprint:
   domain: automation
   source_url: https://github.com/zodyking/weather-forecast-alert-blueprint/blob/main/weather-forecast.yaml
   input:
-    required_settings:
-      name: Required Settings
+    weather_data:
+      name: Weather Data
       icon: mdi:asterisk
-      collapsed: true
+      collapsed: false
       input:
         weather_entity:
           name: Weather Entity
@@ -23,6 +23,11 @@ blueprint:
           selector:
             entity:
               domain: weather
+    tts_settings:
+      name: TTS Settings
+      icon: mdi:account-voice
+      collapsed: true
+      input:
         tts_engine:
           name: TTS Engine
           description: The Text-to-Speech engine entity in Home Assistant responsible for generating spoken announcements, such as Piper TTS or Google Translate TTS.
@@ -36,11 +41,6 @@ blueprint:
             entity:
               domain: media_player
               multiple: true
-    tts_settings:
-      name: TTS Settings
-      icon: mdi:account-voice
-      collapsed: true
-      input:
         voice:
           name: TTS Voice
           description: The voice option for the TTS engine. Specify the voice identifier compatible with your TTS service.
@@ -82,7 +82,7 @@ blueprint:
         use_ai_rewrite:
           name: Use AI Rewrite
           description: Toggle to enable AI rephrasing of the weather messages. If disabled, the raw crafted message will be spoken directly.
-          default: true
+          default: false
           selector:
             boolean: {}
         ai_rewrite_prompt:
@@ -124,6 +124,7 @@ blueprint:
         days_of_week:
           name: Days of the Week
           description: Select the days of the week for time-based announcements to occur. If none selected, it will run every day.
+          default: [mon, tue, wed, thu, fri, sat, sun]
           selector:
             select:
               multiple: true
