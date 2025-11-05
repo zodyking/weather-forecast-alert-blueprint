@@ -94,7 +94,7 @@ blueprint:
         ai_rewrite_prompt:
           name: AI Rewrite Prompt
           description: The prompt template used for AI rephrasing. Customize this to adjust how the AI rewrites the message while preserving facts.
-          default: "Rewrite the message below for clear, natural TTS in a crisp TV-meteorologist voice.\nHard rules:\n- Preserve every fact exactly: all numbers, units (degrees, %, mph), times, day names, and weather terms.\n- Do not invent, omit, reorder, round, or restate any facts. Keep original sequencing of info.\n- Output RAW TEXT ONLY — no quotes, code fences, YAML/JSON, greetings, preambles, or sign-offs.\n- 2–4 short sentences, ≤55 words, plain vocabulary, no emojis, no hashtags, no ALL CAPS.\n- If precipitation timing/probability exists, mention it once using the same daypart/time and %; otherwise omit.\n- Keep symbols and formatting as given (%, AM/PM). If the input is “Forecast not available.” return it unchanged.\n"
+          default: "Rephrase the following weather update in the engaging style of an enthusiastic TV meteorologist: clear, professional, and informative, like delivering the evening forecast. Hard rules:\n- Preserve every fact exactly: all numbers, units (degrees, %, mph), times, day names, and weather terms.\n- Do not invent, omit, reorder, round, or restate any facts. Keep original sequencing of info.\n- Output RAW TEXT ONLY — no quotes, code fences, YAML/JSON, greetings, preambles, or sign-offs.\n- 2–4 short sentences, ≤55 words, plain vocabulary, no emojis, no hashtags, no ALL CAPS.\n- If precipitation timing/probability exists, mention it once using the same daypart/time and %; otherwise omit.\n- Keep symbols and formatting as given (%, AM/PM). If the input is “Forecast not available.” return it unchanged.\n"
           selector:
             text:
               multiline: true
@@ -495,8 +495,9 @@ action:
               now_cond_raw: "{{ trigger.to_state.state | lower }}"
               now_cond_h: "{% set s = now_cond_raw %} {% set s = s | replace('_',' ') | replace('-',' ') %} {% set s = s | replace('partlycloudy','partly cloudy') | replace('clearnight','clear night') %} {{ s | trim }}"
               from_cond_raw: "{{ trigger.from_state.state | default('unknown') | lower }}"
+              now_temp: "{{ trigger.to_state.attributes.temperature | round(0) }}"
               is_change: "{{ now_cond_raw != from_cond_raw }}"
-              msg: "Weather update: conditions have changed to {{ now_cond_h }}."
+              msg: "Weather update: It's now {{ now_temp }} degrees and {{ now_cond_h }}."
               i_ai: !input use_ai_rewrite
               i_ai_task: !input ai_task_entity
               i_ai_text: !input ai_rewrite_prompt
