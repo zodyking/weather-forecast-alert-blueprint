@@ -1,15 +1,25 @@
 blueprint:
   name: Weather — Forecast TTS (AI Optional)
   description: |
-    ![Weather Forecast Alerts banner](https://raw.githubusercontent.com/zodyking/weather-forecast-alert-blueprint/refs/heads/main/imageforecast.png)
-    Speak a concise, TV-weatherman-style forecast to one or more speakers on a schedule.
-    Pulls daily + hourly forecasts, mentions likely rain/snow with daypart and %, and (optionally) rewrites via an AI Task without changing facts.
-    Tips:
-    • Use a weather entity that supports `weather.get_forecasts` (daily + hourly).
-    • Tune “Precipitation probability threshold” and “Hours ahead” to control precip mentions.
-    • Turn off “Use AI rewrite” to speak the raw crafted message.
-    • If your audio cuts in late, increase **TTS pre-roll (ms)** to give speakers time to wake up.
-  domain: automation
+  ![Weather Forecast Alerts banner](https://raw.githubusercontent.com/zodyking/weather-forecast-alert-blueprint/refs/heads/main/imageforecast.png)
+  
+  Deliver concise, professional TV-weatherman-style weather forecasts directly to your smart speakers or media players. This blueprint automates announcements based on customizable triggers, pulling real-time data from daily and hourly forecasts to keep you informed about current conditions, temperature highs/lows, humidity, and potential precipitation.
+  
+  Key Features:
+  - **Scheduled Announcements**: Set timed broadcasts (e.g., every few hours) with day-of-week filters and time windows for daily updates.
+  - **Presence-Triggered Alerts**: Get forecasts upon arrival home via motion or occupancy sensors.
+  - **Change Detection**: Instant notifications for current weather shifts (e.g., from sunny to rainy) or upcoming changes like approaching storms.
+  - **AI-Enhanced Rephrasing (Optional)**: Use an AI task integration to rewrite messages for a natural, crisp delivery while preserving all facts—no additions or omissions.
+  - **Customizable Precipitation Alerts**: Adjust probability thresholds and forecast horizons to focus on relevant rain, snow, or mixed precip mentions.
+  - **TTS Flexibility**: Fine-tune voice, volume, and pre-roll delays for seamless playback on multiple devices.
+  
+  Perfect for smart homes, this blueprint enhances your daily routine with proactive, voice-based weather insights.
+  
+  Tips:
+  • Use a weather entity that supports `weather.get_forecasts` (daily + hourly).
+  • Tune “Precipitation probability threshold” and “Hours ahead” to control precip mentions.
+  • Turn off “Use AI rewrite” to speak the raw crafted message.
+  • If your audio cuts in late, increase **TTS pre-roll (ms)** to give speakers time to wake up.
   source_url: https://github.com/zodyking/weather-forecast-alert-blueprint/blob/main/weather-forecast.yaml
   input:
     weather_data:
