@@ -628,8 +628,8 @@ action:
               next_cond_raw: "{{ next_hit.get('condition','') | lower }}"
               next_cond_h: "{% set s = next_cond_raw %} {% set s = s | replace('_',' ') | replace('-',' ') %} {% set s = s | replace('partlycloudy','partly cloudy') | replace('clearnight','clear night') %} {{ s | trim }}"
               now_cond_raw: "{{ states(key) | lower }}"
-              now_is_precip: "{{ 'rain' in now_cond_raw or 'snow' in now_cond_raw or 'hail' in now_cond_raw or 'pour' in now_cond_raw or 'lightning' in now_cond_raw }}"
-              next_is_precip: "{{ 'rain' in next_cond_raw or 'snow' in next_cond_raw or 'hail' in next_cond_raw or 'pour' in next_cond_raw or 'lightning' in next_cond_raw }}"
+              now_is_precip: "{{ 'rain' in now_cond_raw or 'snow' in now_cond_raw or 'hail' in now_cond_raw or 'sleet' in now_cond_raw or 'pour' in now_cond_raw or 'lightning' in now_cond_raw }}"
+              next_is_precip: "{{ 'rain' in next_cond_raw or 'snow' in next_cond_raw or 'hail' in next_cond_raw or 'sleet' in next_cond_raw or 'pour' in next_cond_raw or 'lightning' in next_cond_raw }}"
               should_announce: "{{ next_ts is not none and next_is_precip and not now_is_precip and 0 < min_to <= minutes_before_announce }}"
               precip_kind: "{% if 'snow' in next_cond_h %}snow{% elif 'sleet' in next_cond_h or 'hail' in next_cond_h %}mixed precipitation {% elif next_cond_h %}rain{% else %}precipitation{% endif %}"
               msg: "Weather alert: {{ precip_kind }} expected in about {{ min_to }} minutes."
@@ -691,7 +691,7 @@ action:
             response_variable: h
           - variables:
               name: !input personal_name
-              current_time: "{{ as_timestamp(now()) | timestamp_custom('%I:%M %p') | replace(' 0', ' ') }}"
+              current_time: "{{ now() | timestamp_custom('%I:%M %p', true) | replace(' 0', ' ') }}"
               now_temp: "{{ state_attr(key,'temperature') | round(0) }}"
               now_cond_h: "{% set s = (states(key) or '') | lower %} {% set s = s | replace('_',' ') | replace('-',' ') %} {% set s = s | replace('partlycloudy','partly cloudy') | replace('clearnight','clear night') %} {{ s | trim }}"
               daily_list: "{{ d.get(key,{}).get('forecast',[]) }}"
@@ -707,7 +707,7 @@ action:
               hit_clock: "{% set out = '' %} {% if hit_ts is not none %} {% set out = (hit_ts | timestamp_custom('%I %p', true)) | replace(' 0',' ') %} {% endif %} {{ out }}"
               precip_kind: "{% if 'snow' in hit_cond_h %}snow{% elif 'sleet' in hit_cond_h or 'hail' in hit_cond_h %}mixed precipitation {% elif hit_cond_h %}rain{% else %}precipitation{% endif %}"
               precip_msg: "{% if hits | length > 0 and hit_pp > 0 %}expect {{ precip_kind }} later in the day around {{ hit_clock }} with a {{ hit_pp }}% chance{% else %}{% endif %}"
-              msg: "Good morning {{ name }}, it's {{ current_time }} and here's your weather forecast. Currently {{ now_temp }} degrees and {{ now_cond_h }}. {{ precip_msg }}. High {{ high }} degrees. Low {{ low }} degrees."
+              msg: "Good morning {{ name }}, here's your forecast. It's {{ current_time }}. Currently {{ now_temp }} degrees and {{ now_cond_h }}. {{ precip_msg }}. High {{ high }} degrees. Low {{ low }} degrees."
               i_ai: !input use_ai_rewrite
               i_ai_task: !input ai_task_entity
               i_ai_text: !input ai_rewrite_prompt
