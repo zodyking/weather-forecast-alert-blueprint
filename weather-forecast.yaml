@@ -1,23 +1,14 @@
 blueprint:
   name: Weather — Forecast TTS (AI Optional)
   description: |
-    ![Weather Forecast Alerts banner](https://raw.githubusercontent.com/zodyking/weather-forecast-alert-blueprint/main/imageforecast.png)
-
-    Create a concise, engaging weather forecast announcement system in Home Assistant. This blueprint uses TTS to deliver TV-style updates via your speakers, pulling real-time data from daily and hourly forecasts. It highlights key details like temperature, conditions, humidity, and probable precipitation (rain or snow) with timing, daypart, and probability percentages.
-
-    Optionally, integrate AI to rephrase messages for a more natural, professional tone—without altering any facts.
-
-    **Key Features:**
-    - Scheduled announcements (e.g., every few hours) or triggered by presence detection.
-    - Alerts for current weather changes or upcoming precipitation.
-    - Customizable thresholds for precip mentions, volume, voice, and more.
-
-    **Tips for Setup:**
-    - Select a weather entity supporting `weather.get_forecasts` (e.g., OpenWeatherMap for daily/hourly data).
-    - Adjust "Precipitation probability threshold" and "Hours ahead" to fine-tune rain/snow alerts.
-    - Disable "Use AI rewrite" for direct, unprocessed messages.
-    - If audio starts late, bump up "TTS pre-roll (ms)" to wake devices properly.
-  author: ZodyKing
+    ![Weather Forecast Alerts banner](https://raw.githubusercontent.com/zodyking/weather-forecast-alert-blueprint/refs/heads/main/imageforecast.png)
+    Speak a concise, TV-weatherman-style forecast to one or more speakers on a schedule.
+    Pulls daily + hourly forecasts, mentions likely rain/snow with daypart and %, and (optionally) rewrites via an AI Task without changing facts.
+    Tips:
+    • Use a weather entity that supports `weather.get_forecasts` (daily + hourly).
+    • Tune “Precipitation probability threshold” and “Hours ahead” to control precip mentions.
+    • Turn off “Use AI rewrite” to speak the raw crafted message.
+    • If your audio cuts in late, increase **TTS pre-roll (ms)** to give speakers time to wake up.
   domain: automation
   source_url: https://github.com/zodyking/weather-forecast-alert-blueprint/blob/main/weather-forecast.yaml
   input:
@@ -26,7 +17,7 @@ blueprint:
       description: This section allows you to select the primary weather entity that supplies current conditions and forecast information for generating announcements. Choose an entity compatible with Home Assistant's weather integrations, such as OpenWeatherMap, which supports both daily and hourly forecasts essential for detailed weather reports.
       icon: mdi:asterisk
       collapsed: true
-      inputs:
+      input:
         weather_entity:
           name: Weather Entity
           description: The weather entity in Home Assistant that provides current conditions and forecast data, including support for hourly and daily forecasts from services like OpenWeatherMap or similar integrations.
@@ -39,7 +30,7 @@ blueprint:
       description: Configure the Text-to-Speech (TTS) system here, including the engine for voice synthesis, media players for output, voice selection, volume control, and pre-roll delay to ensure smooth audio playback. These settings determine how announcements are spoken and delivered through your smart home devices.
       icon: mdi:account-voice
       collapsed: true
-      inputs:
+      input:
         tts_engine:
           name: TTS Engine
           description: The Text-to-Speech engine entity in Home Assistant responsible for generating spoken announcements, such as Piper TTS or Google Translate TTS.
@@ -86,7 +77,7 @@ blueprint:
       description: This optional section enables AI-based rephrasing of weather messages for a more natural, professional tone, similar to a TV meteorologist. Select an AI task entity, toggle rephrasing on or off, and customize the prompt to guide how the AI rewrites messages while strictly preserving all factual details.
       icon: mdi:robot
       collapsed: true
-      inputs:
+      input:
         ai_task_entity:
           name: AI Task Entity (Optional)
           description: An optional AI task entity (such as a Google AI integration) used to rephrase the weather messages for more natural-sounding TTS output. Leave blank if not using AI rephrasing.
@@ -112,7 +103,7 @@ blueprint:
       description: Set up scheduled weather announcements that occur at regular intervals throughout the day. This section includes toggles for enabling the feature, patterns for timing (e.g., every few hours), start and end times to restrict announcements to specific periods, and day-of-week selections to limit when they trigger.
       icon: mdi:clock-outline
       collapsed: true
-      inputs:
+      input:
         enable_time_based:
           name: Enable Time-Based Announcements
           description: Toggle to enable periodic weather announcements at set intervals during the day, based on the hour pattern, start time, and end time configurations.
@@ -121,7 +112,7 @@ blueprint:
             boolean: {}
         hour_pattern:
           name: Hour Pattern for Time-Based
-          description: Specifies the interval for time-based announcements (e.g., '/3' for every 3 hours starting from the minute specified in the trigger). Only active if time-based announcements are enabled.
+          description: Specifies the interval for time-based announcements (e.g., 'Hourly' for every hour).
           default: /3
           selector:
             select:
@@ -141,130 +132,130 @@ blueprint:
         minute_offset:
           name: Minute Offset
           description: The minute of the hour when the announcement should trigger (0-59).
-          default: 3
+          default: "3"
           selector:
             select:
               options:
-                - label: "00"
-                  value: 0
-                - label: "01"
-                  value: 1
-                - label: "02"
-                  value: 2
-                - label: "03"
-                  value: 3
-                - label: "04"
-                  value: 4
-                - label: "05"
-                  value: 5
-                - label: "06"
-                  value: 6
-                - label: "07"
-                  value: 7
-                - label: "08"
-                  value: 8
-                - label: "09"
-                  value: 9
+                - label: "0"
+                  value: "0"
+                - label: "1"
+                  value: "1"
+                - label: "2"
+                  value: "2"
+                - label: "3"
+                  value: "3"
+                - label: "4"
+                  value: "4"
+                - label: "5"
+                  value: "5"
+                - label: "6"
+                  value: "6"
+                - label: "7"
+                  value: "7"
+                - label: "8"
+                  value: "8"
+                - label: "9"
+                  value: "9"
                 - label: "10"
-                  value: 10
+                  value: "10"
                 - label: "11"
-                  value: 11
+                  value: "11"
                 - label: "12"
-                  value: 12
+                  value: "12"
                 - label: "13"
-                  value: 13
+                  value: "13"
                 - label: "14"
-                  value: 14
+                  value: "14"
                 - label: "15"
-                  value: 15
+                  value: "15"
                 - label: "16"
-                  value: 16
+                  value: "16"
                 - label: "17"
-                  value: 17
+                  value: "17"
                 - label: "18"
-                  value: 18
+                  value: "18"
                 - label: "19"
-                  value: 19
+                  value: "19"
                 - label: "20"
-                  value: 20
+                  value: "20"
                 - label: "21"
-                  value: 21
+                  value: "21"
                 - label: "22"
-                  value: 22
+                  value: "22"
                 - label: "23"
-                  value: 23
+                  value: "23"
                 - label: "24"
-                  value: 24
+                  value: "24"
                 - label: "25"
-                  value: 25
+                  value: "25"
                 - label: "26"
-                  value: 26
+                  value: "26"
                 - label: "27"
-                  value: 27
+                  value: "27"
                 - label: "28"
-                  value: 28
+                  value: "28"
                 - label: "29"
-                  value: 29
+                  value: "29"
                 - label: "30"
-                  value: 30
+                  value: "30"
                 - label: "31"
-                  value: 31
+                  value: "31"
                 - label: "32"
-                  value: 32
+                  value: "32"
                 - label: "33"
-                  value: 33
+                  value: "33"
                 - label: "34"
-                  value: 34
+                  value: "34"
                 - label: "35"
-                  value: 35
+                  value: "35"
                 - label: "36"
-                  value: 36
+                  value: "36"
                 - label: "37"
-                  value: 37
+                  value: "37"
                 - label: "38"
-                  value: 38
+                  value: "38"
                 - label: "39"
-                  value: 39
+                  value: "39"
                 - label: "40"
-                  value: 40
+                  value: "40"
                 - label: "41"
-                  value: 41
+                  value: "41"
                 - label: "42"
-                  value: 42
+                  value: "42"
                 - label: "43"
-                  value: 43
+                  value: "43"
                 - label: "44"
-                  value: 44
+                  value: "44"
                 - label: "45"
-                  value: 45
+                  value: "45"
                 - label: "46"
-                  value: 46
+                  value: "46"
                 - label: "47"
-                  value: 47
+                  value: "47"
                 - label: "48"
-                  value: 48
+                  value: "48"
                 - label: "49"
-                  value: 49
+                  value: "49"
                 - label: "50"
-                  value: 50
+                  value: "50"
                 - label: "51"
-                  value: 51
+                  value: "51"
                 - label: "52"
-                  value: 52
+                  value: "52"
                 - label: "53"
-                  value: 53
+                  value: "53"
                 - label: "54"
-                  value: 54
+                  value: "54"
                 - label: "55"
-                  value: 55
+                  value: "55"
                 - label: "56"
-                  value: 56
+                  value: "56"
                 - label: "57"
-                  value: 57
+                  value: "57"
                 - label: "58"
-                  value: 58
+                  value: "58"
                 - label: "59"
-                  value: 59
+                  value: "59"
         start_time:
           name: Start Time
           description: The earliest time of day (in HH:MM:SS format) when time-based announcements can occur. Announcements will only trigger between this and the end time.
@@ -304,7 +295,7 @@ blueprint:
       description: Enable weather updates triggered by presence detection, ideal for announcing forecasts upon arrival home. Configure sensors for detecting occupancy and toggle the feature to integrate with your smart home's motion or presence awareness.
       icon: mdi:motion-sensor
       collapsed: true
-      inputs:
+      input:
         enable_presence_triggered:
           name: Enable Presence-Triggered Announcements
           description: Toggle to enable weather announcements when presence is detected (e.g., someone arrives home), using the specified presence sensors.
@@ -324,7 +315,7 @@ blueprint:
       description: Control alerts for real-time and impending weather changes. This includes toggles for notifying about current condition shifts (e.g., starting to rain) and upcoming events, with adjustable timing for advance warnings to prepare users for weather shifts.
       icon: mdi:weather-cloudy-alert
       collapsed: true
-      inputs:
+      input:
         enable_current_change_announce:
           name: Enable Current Change Announcements
           description: Toggle to enable announcements when the current weather condition changes (e.g., from sunny to rainy).
@@ -352,7 +343,7 @@ blueprint:
       description: Fine-tune how precipitation is handled in forecasts and alerts. Set thresholds for probability to avoid unnecessary mentions and define the forecast window in hours to focus on near-term or extended predictions.
       icon: mdi:weather-rainy
       collapsed: true
-      inputs:
+      input:
         precip_threshold:
           name: Precipitation Probability Threshold (%)
           description: The minimum precipitation probability percentage required to mention potential rain/snow in forecasts. Lower values include more mentions; higher values are more conservative.
