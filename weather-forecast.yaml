@@ -297,7 +297,7 @@ blueprint:
       collapsed: true
       input:
         enable_sensor_triggered:
-          name: Enable Sensor-Triggered Announcements
+          name: Enable Sensor Triggered Announcements
           description: Toggle to enable weather announcements when sensor is detected (e.g., someone arrives home), using the specified sensors.
           default: false
           selector:
@@ -442,6 +442,8 @@ trigger:
     allowed_methods:
       - POST
       - PUT
+      - GET
+      - HEAD
     local_only: true
     webhook_id: !input webhook_id
     id: alarm_webhook
@@ -571,6 +573,22 @@ action:
               i_ai_text: !input ai_rewrite_prompt
           - if: "{{ is_change }}"
             then:
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ i_ai and (i_ai_task | default('') | string) != '' }}"
+                    sequence:
+                      - action: ai_task.generate_data
+                        data:
+                          entity_id: "{{ i_ai_task }}"
+                          task_name: "weather message"
+                          instructions: "{{ i_ai_text }}\nMessage:\n\"{{ msg | replace('\"','\\\\\"') }}\""
+                        response_variable: aimsg
+                      - variables:
+                          spoken: "{{ aimsg.data | default(msg) }}"
+                default:
+                  - variables:
+                      spoken: "{{ msg }}"
               - action: media_player.volume_set
                 target:
                   entity_id: !input speakers
@@ -673,7 +691,7 @@ action:
             response_variable: h
           - variables:
               name: !input personal_name
-              current_time: "{{ now() | timestamp_custom('%I:%M %p') | replace(' 0', ' ') }}"
+              current_time: "{{ as_timestamp(now()) | timestamp_custom('%I:%M %p') | replace(' 0', ' ') }}"
               now_temp: "{{ state_attr(key,'temperature') | round(0) }}"
               now_cond_h: "{% set s = (states(key) or '') | lower %} {% set s = s | replace('_',' ') | replace('-',' ') %} {% set s = s | replace('partlycloudy','partly cloudy') | replace('clearnight','clear night') %} {{ s | trim }}"
               daily_list: "{{ d.get(key,{}).get('forecast',[]) }}"
