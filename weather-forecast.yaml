@@ -557,6 +557,25 @@ action:
             default:
               - variables:
                   spoken: "{{ msg }}"
+          - action: media_player.volume_set
+            target:
+              entity_id: !input speakers
+            data:
+              volume_level: !input volume_level
+          - repeat:
+              for_each: !input speakers
+              sequence:
+                - delay:
+                    milliseconds: !input preroll_ms
+                - action: tts.speak
+                  target:
+                    entity_id: !input tts_engine
+                  data:
+                    cache: true
+                    media_player_entity_id: "{{ repeat.item }}"
+                    message: "{{ spoken | trim }}"
+                    options:
+                      voice: !input voice
       - conditions:
           - condition: trigger
             id: current_change
@@ -707,7 +726,7 @@ action:
               hit_clock: "{% set out = '' %} {% if hit_ts is not none %} {% set out = (hit_ts | timestamp_custom('%I %p', true)) | replace(' 0',' ') %} {% endif %} {{ out }}"
               precip_kind: "{% if 'snow' in hit_cond_h %}snow{% elif 'sleet' in hit_cond_h or 'hail' in hit_cond_h %}mixed precipitation {% elif hit_cond_h %}rain{% else %}precipitation{% endif %}"
               precip_msg: "{% if hits | length > 0 and hit_pp > 0 %}expect {{ precip_kind }} later in the day around {{ hit_clock }} with a {{ hit_pp }}% chance.{% else %}{% endif %}"
-              msg: "Good morning {{ name }}, here's your forecast. It's {{ current_time }}. Currently {{ now_temp }} degrees and {{ now_cond_h }}. {{ precip_msg }} High {{ high }} degrees. Low {{ low }} degrees."
+              msg: "here's your forecast. It's {{ current_time }}. Currently {{ now_temp }} degrees and {{ now_cond_h }}. {{ precip_msg }} High {{ high }} degrees. Low {{ low }} degrees."
               i_ai: !input use_ai_rewrite
               i_ai_task: !input ai_task_entity
               i_ai_text: !input ai_rewrite_prompt
@@ -727,6 +746,8 @@ action:
             default:
               - variables:
                   spoken: "{{ msg }}"
+          - variables:
+              spoken_final: "Good morning {{ name }}, {{ spoken }}"
           - action: media_player.volume_set
             target:
               entity_id: !input speakers
@@ -743,28 +764,7 @@ action:
                   data:
                     cache: true
                     media_player_entity_id: "{{ repeat.item }}"
-                    message: "{{ spoken | trim }}"
+                    message: "{{ spoken_final | trim }}"
                     options:
                       voice: !input voice
-  - if: "{{ spoken | default('') | trim != '' }}"
-    then:
-      - action: media_player.volume_set
-        target:
-          entity_id: !input speakers
-        data:
-          volume_level: !input volume_level
-      - repeat:
-          for_each: !input speakers
-          sequence:
-            - delay:
-                milliseconds: !input preroll_ms
-            - action: tts.speak
-              target:
-                entity_id: !input tts_engine
-              data:
-                cache: true
-                media_player_entity_id: "{{ repeat.item }}"
-                message: "{{ spoken | trim }}"
-                options:
-                  voice: !input voice
 mode: single
