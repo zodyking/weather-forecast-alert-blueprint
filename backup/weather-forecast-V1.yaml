@@ -416,6 +416,25 @@ blueprint:
               min: 1
               max: 48
               unit_of_measurement: hours
+    voice_satellite_settings:
+      name: Voice Satellite
+      description: Enable voice-activated weather reports for assistants like Alexa or Google Home. Customize the trigger phrases and toggle the feature to respond with detailed forecasts similar to scheduled announcements upon voice command.
+      icon: mdi:microphone-message
+      collapsed: true
+      input:
+        enable_voice_satellite:
+          name: Enable Voice Satellite
+          description: Toggle to enable conversation-based triggers for voice assistants. When activated, the automation listens for specified phrases and responds with a weather forecast TTS announcement.
+          default: false
+          selector:
+            boolean: {}
+        conversation_command:
+          name: Conversation Command
+          description: Custom phrases (one per line) to trigger the weather forecast via voice assistants (e.g., "What's the weather"). Edit to match your preferred commands; multiple phrases can be added for flexibility.
+          default: "What's the weather\nWhat is the weather"
+          selector:
+            text:
+              multiline: true
 trigger_variables:
   enable_time_based: !input enable_time_based
   enable_sensor_triggered: !input enable_sensor_triggered
@@ -447,6 +466,9 @@ trigger:
     local_only: true
     webhook_id: !input webhook_id
     id: alarm_webhook
+  - trigger: conversation
+    command: "{{ conversation_command.split('\n') }}"
+    id: voice_satellite
 condition:
   - condition: or
     conditions:
@@ -484,6 +506,12 @@ condition:
             id: alarm_webhook
           - condition: template
             value_template: "{{ enable_alarm_announce }}"
+      - condition: and
+        conditions:
+          - condition: trigger
+            id: voice_satellite
+          - condition: template
+            value_template: "{{ enable_voice_satellite }}"
 action:
   - variables:
       key: !input weather_entity
@@ -496,6 +524,8 @@ action:
                 id: time_based
               - condition: trigger
                 id: sensor_trigger
+              - condition: trigger
+                id: voice_satellite
         sequence:
           - action: weather.get_forecasts
             target:
