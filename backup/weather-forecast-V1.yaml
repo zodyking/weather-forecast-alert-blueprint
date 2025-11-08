@@ -418,7 +418,7 @@ blueprint:
               unit_of_measurement: hours
     voice_satellite_settings:
       name: Voice Satellite
-      description: Enable voice-activated weather reports for assistants like Alexa or Google Home. Customize the trigger phrases and toggle the feature to respond with detailed forecasts similar to scheduled announcements upon voice command.
+      description: Configure voice-activated weather reports for assistants like Alexa or Google Home. Customize the trigger phrases and toggle the feature to respond with detailed forecasts similar to scheduled announcements upon voice command.
       icon: mdi:microphone-message
       collapsed: true
       input:
@@ -442,6 +442,7 @@ trigger_variables:
   enable_upcoming_change_announce: !input enable_upcoming_change_announce
   minutes_before_announce: !input minutes_before_announce
   enable_alarm_announce: !input enable_alarm_announce
+  enable_voice_satellite: !input enable_voice_satellite
 trigger:
   - trigger: time_pattern
     hours: !input hour_pattern
@@ -524,8 +525,6 @@ action:
                 id: time_based
               - condition: trigger
                 id: sensor_trigger
-              - condition: trigger
-                id: voice_satellite
         sequence:
           - action: weather.get_forecasts
             target:
@@ -797,4 +796,5 @@ action:
                     message: "{{ spoken_final | trim }}"
                     options:
                       voice: !input voice
-mode: single
+mode: queued
+max: 4
