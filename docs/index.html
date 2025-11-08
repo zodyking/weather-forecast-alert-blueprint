@@ -7,28 +7,32 @@
 <meta name="description" content="Documentation for the Weather — Forecast TTS (AI Optional) Home Assistant blueprint." />
 <style>
   :root{
-    --bg:#0b0e14; --panel:#0f1421; --card:#0f1629; --text:#e6edf3; --muted:#9aa4b2;
-    --brand:#60a5fa; --brand2:#22c55e; --border:#1f2940; --code:#0b1220; --warn:#f59e0b; --err:#ef4444;
-    --r:16px; --shadow:0 10px 30px rgba(0,0,0,.35)
+    --bg:#0b0e14; --panel:#0f1421; --card:#111a2e; --text:#e6edf3; --muted:#9aa4b2;
+    --brand:#62a5ff; --accent:#22c55e; --border:#1f2940; --code:#0b1220; --warn:#f59e0b;
+    --err:#ef4444; --radius:14px; --shadow:0 12px 28px rgba(0,0,0,.35)
   }
   @media (prefers-color-scheme:light){
     :root{ --bg:#f6f8fb; --panel:#ffffff; --card:#ffffff; --text:#0b1220; --muted:#5b6573;
-           --brand:#2563eb; --brand2:#10b981; --border:#dfe6ef; --code:#0f172a; --shadow:0 12px 28px rgba(16,24,40,.12)}
+           --brand:#2563eb; --accent:#10b981; --border:#dfe6ef; --code:#0f172a; --shadow:0 12px 28px rgba(16,24,40,.12)}
   }
   *{box-sizing:border-box}
   html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 system-ui,-apple-system,Segoe UI,Roboto,Arial,Helvetica,sans-serif}
   a{color:var(--brand);text-decoration:none}
-  header.hero{border-bottom:1px solid var(--border);
-    background:radial-gradient(900px 400px at 8% -10%, rgba(96,165,250,.25), transparent 60%),
-               radial-gradient(800px 500px at 110% 0%, rgba(34,197,94,.18), transparent 60%),
-               linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0));}
   .wrap{max-width:1200px;margin:0 auto;padding:24px}
+  header.hero{border-bottom:1px solid var(--border);
+    background:
+      radial-gradient(900px 400px at 8% -10%, rgba(98,165,255,.25), transparent 60%),
+      radial-gradient(800px 500px at 110% 0%, rgba(34,197,94,.18), transparent 60%),
+      linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0));
+  }
   .hero-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:28px;align-items:center;padding:40px 24px}
-  .hero h1{margin:0 0 10px 0;font-size:40px}
-  .hero p{margin:0 0 14px 0;color:var(--muted)}
-  .badge{display:inline-block;padding:4px 10px;border:1px solid rgba(96,165,250,.45);color:var(--brand);border-radius:999px;font-size:12px;background:rgba(96,165,250,.12);margin-bottom:8px}
-  .btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}
-  .btn{display:inline-flex;gap:8px;align-items:center;padding:12px 14px;border-radius:12px;border:1px solid var(--brand);background:var(--brand);color:#fff;font-weight:600;box-shadow:var(--shadow)}
+  @media (max-width:1000px){.hero-grid{grid-template-columns:1fr}}
+  .badge{display:inline-block;padding:4px 10px;border:1px solid rgba(98,165,255,.45);color:var(--brand);
+    border-radius:999px;font-size:12px;background:rgba(98,165,255,.12);margin-bottom:10px}
+  h1{margin:0 0 8px 0;font-size:40px} .sub{color:var(--muted);margin:0}
+  .btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+  .btn{display:inline-flex;gap:8px;align-items:center;padding:12px 14px;border-radius:12px;border:1px solid var(--brand);
+    background:var(--brand);color:#fff;font-weight:600;box-shadow:var(--shadow)}
   .btn.secondary{background:transparent;color:var(--brand)}
   .banner{width:100%;border-radius:16px;border:1px solid var(--border);box-shadow:var(--shadow)}
   main.layout{display:grid;grid-template-columns:300px 1fr;gap:22px;margin-top:24px}
@@ -39,18 +43,50 @@
   details.group>summary{cursor:pointer;padding:10px 12px;font-weight:700}
   .links{padding:6px 12px 12px}
   .links a{display:block;padding:6px 0;color:var(--muted);font-size:14px}
-  section.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);padding:18px}
+  .searchbox{display:flex;gap:8px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--panel)}
+  select.jump{flex:1;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text)}
+  .go{padding:10px 12px;border-radius:10px;border:1px solid var(--brand);background:var(--brand);color:#fff;font-weight:600}
+  section.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
   h2{margin:4px 0 12px;font-size:26px} h3{margin:18px 0 8px;font-size:20px}
   .grid{display:grid;gap:16px} .cols-2{grid-template-columns:1fr} @media (min-width:900px){.cols-2{grid-template-columns:1fr 1fr}}
-  .call{border-left:4px solid var(--brand);background:rgba(96,165,250,.08);padding:12px;border-radius:10px}
+  .call{border-left:4px solid var(--brand);background:rgba(98,165,255,.08);padding:12px;border-radius:10px}
   .call.warn{border-left-color:var(--warn);background:rgba(245,158,11,.12)}
   .table{width:100%;border-collapse:separate;border-spacing:0 8px}
   .row{background:var(--panel);border:1px solid var(--border);border-radius:10px}
   .table th,.table td{padding:10px 12px;vertical-align:top} .table th{color:#9aa4b2;text-align:left}
   pre{background:var(--code);color:#c9e3ff;border:1px solid #102342;border-radius:12px;padding:14px;overflow:auto}
   code{font-family:ui-monospace,Menlo,Consolas,monospace}
-  footer{color:#9aa4b2;text-align:center;padding:26px}
   .pill{display:inline-block;padding:6px 10px;border:1px solid var(--border);border-radius:999px;background:var(--panel);color:#9aa4b2;margin-right:6px}
+  footer{color:#9aa4b2;text-align:center;padding:26px}
+
+  /* ======= HA-style Mock (pure HTML/CSS) ======= */
+  .hamock{margin:22px 0;border:1px solid var(--border);border-radius:14px;background:var(--panel);color:var(--text)}
+  .hamock .bar{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--border);background:var(--card)}
+  .hamock .title{font-weight:700}
+  .hamock .chip{display:inline-flex;gap:6px;align-items:center;padding:4px 10px;border:1px solid var(--border);border-radius:999px;background:#0000;color:#9aa4b2;font-size:12px}
+  .hamock .tabs{display:flex;gap:2px;padding:0 10px;border-bottom:1px solid var(--border);background:var(--panel)}
+  .hamock input[type=radio]{position:absolute;opacity:0;pointer-events:none}
+  .hamock .tab{padding:10px 12px;border:1px solid transparent;border-radius:10px 10px 0 0;color:#9aa4b2;cursor:pointer}
+  .hamock input#t1:checked ~ .tabs label[for=t1],
+  .hamock input#t2:checked ~ .tabs label[for=t2],
+  .hamock input#t3:checked ~ .tabs label[for=t3],
+  .hamock input#t4:checked ~ .tabs label[for=t4]{border-color:var(--border);border-bottom-color:transparent;color:inherit;background:var(--panel)}
+  .hamock .pane{display:none;padding:14px 16px}
+  .hamock input#t1:checked ~ .pane#p1,
+  .hamock input#t2:checked ~ .pane#p2,
+  .hamock input#t3:checked ~ .pane#p3,
+  .hamock input#t4:checked ~ .pane#p4{display:block}
+  .hamock .grid{display:grid;gap:10px}
+  .hamock .row{border:1px solid var(--border);border-radius:12px;background:var(--card);padding:12px}
+  .hamock code{background:rgba(99,102,241,.08);border:1px solid var(--border);border-radius:6px;padding:1px 6px}
+  .hamock .badge{display:inline-block;font-size:12px;padding:2px 8px;border:1px solid var(--border);border-radius:999px;color:#9aa4b2;margin-left:6px}
+  .hamock details{border:1px solid var(--border);border-radius:10px;background:var(--panel)}
+  .hamock details+details{margin-top:8px}
+  .hamock summary{cursor:pointer;padding:10px 12px;font-weight:600}
+  .hamock .body{padding:0 12px 12px}
+  .muted{color:#9aa4b2}
+  /* Highlight anchors on jump */
+  :target{scroll-margin-top:80px; outline:2px solid var(--brand); outline-offset:6px; border-radius:8px}
 </style>
 </head>
 <body>
@@ -59,21 +95,16 @@
   <div class="wrap hero-grid">
     <div>
       <span class="badge">Home Assistant Blueprint</span>
-      <h1>Weather — Forecast TTS <span style="color:#9aa4b2">(AI Optional)</span></h1>
-      <p>TV-style forecasts on your speakers by schedule, sensor, webhook, or voice. Uses daily + hourly data, calls out first likely precip window with time and %, optional AI rephrase without changing facts.</p>
+      <h1>Weather — Forecast TTS <span class="muted">(AI Optional)</span></h1>
+      <p class="sub">TV-style forecasts by schedule, sensor, webhook, or voice. Uses daily + hourly data, calls out first likely precip window with time and %, optional AI rephrase that preserves facts.</p>
       <div class="btns">
         <a class="btn" href="homeassistant://blueprint/import?url=https://raw.githubusercontent.com/zodyking/weather-forecast-alert-blueprint/refs/heads/main/weather-forecast.yaml">Import to Home Assistant</a>
         <a class="btn secondary" target="_blank" rel="noopener" href="https://raw.githubusercontent.com/zodyking/weather-forecast-alert-blueprint/refs/heads/main/weather-forecast.yaml">Raw YAML</a>
         <a class="btn secondary" target="_blank" rel="noopener" href="https://github.com/zodyking/weather-forecast-alert-blueprint">Repository</a>
       </div>
-      <div style="margin-top:12px">
-        <span class="pill">Schedule / Sensor / Webhook / Voice</span>
-        <span class="pill">Per-scenario volume + pre-roll</span>
-        <span class="pill">Optional AI rephrase</span>
-      </div>
     </div>
     <div>
-      <img class="banner" alt="Blueprint banner"
+      <img class="banner" alt="Weather Forecast Alerts banner"
         src="https://raw.githubusercontent.com/zodyking/weather-forecast-alert-blueprint/refs/heads/main/imageforecast.png">
     </div>
   </div>
@@ -82,13 +113,32 @@
 <div class="wrap">
   <main class="layout">
     <nav class="side" aria-label="Documentation">
-      <h3>Guide</h3>
+      <h3>Quick Jump</h3>
+      <form class="searchbox">
+        <label for="jump" class="muted" style="position:absolute;left:-9999px">Jump to section</label>
+        <select id="jump" name="jump" class="jump" onchange="if(this.value)location.href=this.value">
+          <option value="">Search common tasks…</option>
+          <option value="#reqs">Requirements</option>
+          <option value="#inputs">Configure inputs</option>
+          <option value="#time">Schedule hourly/every N hours</option>
+          <option value="#sensor">Announce on motion/presence</option>
+          <option value="#webhook">Set up webhook alarm</option>
+          <option value="#voice">Voice phrases</option>
+          <option value="#precip">Tune precip threshold</option>
+          <option value="#tts">TTS engine, voice, pre-roll</option>
+          <option value="#ai">Enable AI rewrite</option>
+          <option value="#mock">Automation mock</option>
+          <option value="#trouble">Troubleshooting</option>
+          <option value="#faq">FAQ</option>
+        </select>
+        <button class="go" formaction="#inputs">Go</button>
+      </form>
+
       <details class="group" open>
         <summary>Getting started</summary>
         <div class="links">
           <a href="#overview">Overview</a>
-          <a href="#requirements">Requirements</a>
-          <a href="#webhook">Webhook URL</a>
+          <a href="#reqs">Requirements</a>
           <a href="#folders">Repo layout</a>
         </div>
       </details>
@@ -96,15 +146,22 @@
         <summary>Configuration</summary>
         <div class="links">
           <a href="#inputs">Inputs overview</a>
+          <a href="#time">Time-based announcements</a>
+          <a href="#sensor">Sensor-triggered</a>
+          <a href="#changes">Change announcements</a>
+          <a href="#precip">Precip settings</a>
+          <a href="#voice">Voice satellite</a>
+          <a href="#tts">TTS settings</a>
+          <a href="#ai">AI rephrasing</a>
+          <a href="#webhook">Webhook alarm (Android / iOS)</a>
         </div>
       </details>
       <details class="group" open>
-        <summary>Automation Mock</summary>
+        <summary>References</summary>
         <div class="links">
-          <a href="#mock">Triggers</a>
-          <a href="#mock">Conditions</a>
-          <a href="#mock">Actions</a>
-          <a href="#mock">Variables</a>
+          <a href="#mock">Automation mock</a>
+          <a href="#faq">FAQ</a>
+          <a href="#trouble">Troubleshooting</a>
         </div>
       </details>
     </nav>
@@ -118,19 +175,13 @@
         </div>
       </section>
 
-      <section id="requirements" class="card">
+      <section id="reqs" class="card">
         <h2>Requirements</h2>
         <ul>
-          <li><code>weather</code> entity supporting <code>weather.get_forecasts</code> for daily + hourly.</li>
+          <li><code>weather</code> entity supporting <code>weather.get_forecasts</code> (daily + hourly).</li>
           <li><code>tts</code> engine and at least one <code>media_player</code>.</li>
-          <li>Optional: AI Task entity; Conversation integration for voice.</li>
+          <li>Optional: an <code>ai_task</code> entity for rephrasing; Conversation integration for voice.</li>
         </ul>
-      </section>
-
-      <section id="webhook" class="card">
-        <h2>Webhook URL</h2>
-        <p>Local canonical URL using the blueprint input:</p>
-        <pre><code>http://homeassistant.local:8123/api/webhook/&lt;WEBHOOK_ID_FROM_INPUT&gt;</code></pre>
       </section>
 
       <section id="inputs" class="card">
@@ -138,26 +189,234 @@
         <table class="table">
           <tr><th>Group</th><th>Key(s)</th><th>Description</th></tr>
           <tr class="row"><td>Weather</td><td><code>weather_entity</code></td><td>Source of current, daily, hourly.</td></tr>
-          <tr class="row"><td>TTS</td><td><code>tts_engine</code>, <code>speakers</code>, <code>voice</code>, <code>volume_level</code>, <code>preroll_ms</code></td><td>Engine, targets, voice, volume, wake-up delay.</td></tr>
-          <tr class="row"><td>AI</td><td><code>ai_task_entity</code>, <code>use_ai_rewrite</code>, <code>ai_rewrite_prompt</code></td><td>Optional AI pass with strict no-fact-change rules.</td></tr>
-          <tr class="row"><td>Time</td><td><code>enable_time_based</code>, <code>hour_pattern</code>, <code>minute_offset</code>, <code>start_time</code>, <code>end_time</code>, <code>days_of_week</code></td><td>Schedule and windowing.</td></tr>
-          <tr class="row"><td>Sensor</td><td><code>enable_sensor_triggered</code>, <code>presence_sensors</code></td><td>Announce when sensors turn <code>on</code>.</td></tr>
-          <tr class="row"><td>Webhook</td><td><code>enable_alarm_announce</code>, <code>webhook_id</code>, <code>personal_name</code>, <code>alarm_volume_level</code></td><td>On-demand personal report.</td></tr>
-          <tr class="row"><td>Change</td><td><code>enable_current_change_announce</code>, <code>current_change_volume_level</code>, <code>enable_upcoming_change_announce</code>, <code>upcoming_change_volume_level</code>, <code>minutes_before_announce</code></td><td>Real-time and impending precip alerts.</td></tr>
-          <tr class="row"><td>Precip</td><td><code>precip_threshold</code>, <code>hours_ahead</code></td><td>Threshold and search window.</td></tr>
-          <tr class="row"><td>Voice</td><td><code>enable_voice_satellite</code>, <code>conversation_command</code></td><td>Conversation trigger phrases.</td></tr>
+          <tr class="row"><td id="tts">TTS</td><td><code>tts_engine</code>, <code>speakers</code>, <code>voice</code>, <code>volume_level</code>, <code>preroll_ms</code></td><td>Engine, targets, voice, volume, wake-up delay.</td></tr>
+          <tr class="row"><td id="ai">AI</td><td><code>ai_task_entity</code>, <code>use_ai_rewrite</code>, <code>ai_rewrite_prompt</code></td><td>Optional AI pass with no fact changes.</td></tr>
+          <tr class="row"><td id="time">Time</td><td><code>enable_time_based</code>, <code>hour_pattern</code>, <code>minute_offset</code>, <code>start_time</code>, <code> end_time</code>, <code>days_of_week</code></td><td>Schedule and window.</td></tr>
+          <tr class="row"><td id="sensor">Sensor</td><td><code>enable_sensor_triggered</code>, <code>presence_sensors</code></td><td>Announce when sensors turn <code>on</code>.</td></tr>
+          <tr class="row"><td id="webhook">Webhook</td><td><code>enable_alarm_announce</code>, <code>webhook_id</code>, <code>personal_name</code>, <code>alarm_volume_level</code></td><td>On-demand personal report.</td></tr>
+          <tr class="row"><td id="changes">Change</td><td><code>enable_current_change_announce</code>, <code>current_change_volume_level</code>, <code>enable_upcoming_change_announce</code>, <code>upcoming_change_volume_level</code>, <code>minutes_before_announce</code></td><td>Real-time and impending alerts.</td></tr>
+          <tr class="row"><td id="precip">Precip</td><td><code>precip_threshold</code>, <code>hours_ahead</code></td><td>Threshold and search window.</td></tr>
+          <tr class="row"><td id="voice">Voice</td><td><code>enable_voice_satellite</code>, <code>conversation_command</code></td><td>Conversation trigger phrases.</td></tr>
         </table>
       </section>
 
-      <!-- ======= AUTOGENERATED MOCK START ======= -->
+      <!-- ======= Automation Mock (pure HTML/CSS, no JS) ======= -->
       <section id="mock" class="card">
-        <h2>Automation Mock (mirrors <code>weather-forecast.yaml</code>)</h2>
-        <!-- BEGIN:AUTOGEN_MOCK -->
-        <!-- Generated by tools/render_mock.py. Do not edit between markers. -->
-        <!-- END:AUTOGEN_MOCK -->
-        <p style="color:#9aa4b2;margin-top:10px">This section is pure HTML, updated by CI on each push to the YAML.</p>
+        <h2>Automation Mock (editor-style)</h2>
+        <div class="hamock">
+          <div class="bar">
+            <div class="title">Automation (from blueprint): Weather — Forecast TTS</div>
+            <div>
+              <span class="chip">Mode: queued</span>
+              <span class="chip">Max: 4</span>
+            </div>
+          </div>
+
+          <!-- Radios drive tabs -->
+          <input type="radio" name="hamocktab" id="t1" checked>
+          <input type="radio" name="hamocktab" id="t2">
+          <input type="radio" name="hamocktab" id="t3">
+          <input type="radio" name="hamocktab" id="t4">
+
+          <div class="tabs">
+            <label class="tab" for="t1">Triggers</label>
+            <label class="tab" for="t2">Conditions</label>
+            <label class="tab" for="t3">Actions</label>
+            <label class="tab" for="t4">Variables</label>
+          </div>
+
+          <!-- Triggers -->
+          <div class="pane" id="p1">
+            <div class="grid">
+              <div class="row" id="trg-time">
+                <strong>Time pattern</strong> <span class="badge">id: time_based</span>
+                <div>Hours: <code>!input hour_pattern</code> • Minutes: <code>!input minute_offset</code></div>
+              </div>
+              <div class="row" id="trg-sensor">
+                <strong>State</strong> (presence sensors) <span class="badge">id: sensor_trigger</span>
+                <div>Entity: <code>!input presence_sensors</code> → <code>on</code></div>
+              </div>
+              <div class="row" id="trg-change">
+                <strong>State</strong> (weather entity change) <span class="badge">id: current_change</span>
+                <div>Entity: <code>!input weather_entity</code></div>
+              </div>
+              <div class="row" id="trg-upcoming">
+                <strong>Time pattern</strong> (upcoming change poll) <span class="badge">id: upcoming_change</span>
+                <div>Minutes: <code>/5</code></div>
+              </div>
+              <div class="row" id="trg-webhook">
+                <strong>Webhook</strong> <span class="badge">id: alarm_webhook</span>
+                <div>URL: <code>http://homeassistant.local:8123/api/webhook/&lt;!input webhook_id&gt;</code> • Methods: <code>POST, PUT, GET, HEAD</code> • Local only</div>
+              </div>
+              <div class="row" id="trg-voice">
+                <strong>Conversation</strong> <span class="badge">id: voice_satellite</span>
+                <div>Commands: lines in <code>!input conversation_command</code></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Conditions -->
+          <div class="pane" id="p2">
+            <details open>
+              <summary>Master OR across scenarios</summary>
+              <div class="body">
+                <ul>
+                  <li><strong>Time-based</strong> AND between <code>!input start_time</code>–<code>!input end_time</code> AND <code>!input enable_time_based</code> AND day ∈ <code>!input days_of_week</code></li>
+                  <li><strong>Sensor-triggered</strong> AND <code>!input enable_sensor_triggered</code></li>
+                  <li><strong>Current change</strong> AND <code>!input enable_current_change_announce</code></li>
+                  <li><strong>Upcoming change</strong> AND <code>!input enable_upcoming_change_announce</code></li>
+                  <li><strong>Alarm webhook</strong> AND <code>!input enable_alarm_announce</code></li>
+                  <li><strong>Voice satellite</strong> AND <code>!input enable_voice_satellite</code></li>
+                </ul>
+                <p class="muted">If any branch is true, the corresponding action sequence runs.</p>
+              </div>
+            </details>
+          </div>
+
+          <!-- Actions -->
+          <div class="pane" id="p3">
+            <details open>
+              <summary>Time-based / Sensor-triggered</summary>
+              <div class="body">
+                <ol>
+                  <li><code>weather.get_forecasts</code> daily → <em>d</em>; hourly → <em>h</em></li>
+                  <li>Compose message: greeting + day; Right now (cond/temp/humidity); Today (if condition differs, high, low); First precip window within <code>!input hours_ahead</code> with time and <code>%</code> if <code>≥ !input precip_threshold</code></li>
+                  <li>Optional AI pass (<code>ai_task.generate_data</code>) if <code>!input use_ai_rewrite</code> and <code>!input ai_task_entity</code></li>
+                  <li><code>media_player.volume_set</code> → <code>!input volume_level</code></li>
+                  <li>For each <code>!input speakers</code>: delay <code>!input preroll_ms</code> ms, then <code>tts.speak</code> with <code>options.voice = !input voice</code></li>
+                </ol>
+              </div>
+            </details>
+
+            <details>
+              <summary>Current change</summary>
+              <div class="body">
+                <ol>
+                  <li>On weather entity state change</li>
+                  <li>Compose: “It’s now &lt;temp&gt; degrees and &lt;condition&gt;.”</li>
+                  <li>Optional AI pass</li>
+                  <li><code>media_player.volume_set</code> → <code>!input current_change_volume_level</code></li>
+                  <li>Per-speaker delay + <code>tts.speak</code></li>
+                </ol>
+              </div>
+            </details>
+
+            <details>
+              <summary>Upcoming change</summary>
+              <div class="body">
+                <ol>
+                  <li>Hourly fetch → next precip that begins within <code>!input minutes_before_announce</code> if not precipitating now</li>
+                  <li>Speak: “&lt;rain/snow&gt; in about &lt;minutes&gt; minutes.”</li>
+                  <li>Optional AI pass</li>
+                  <li><code>media_player.volume_set</code> → <code>!input upcoming_change_volume_level</code></li>
+                  <li>Per-speaker delay + <code>tts.speak</code></li>
+                </ol>
+              </div>
+            </details>
+
+            <details>
+              <summary>Alarm webhook</summary>
+              <div class="body">
+                <ol>
+                  <li>Daily + hourly fetch; personalize with <code>!input personal_name</code></li>
+                  <li>Optional AI pass; prefix “Good morning &lt;name&gt; …”</li>
+                  <li><code>media_player.volume_set</code> → <code>!input alarm_volume_level</code></li>
+                  <li>Per-speaker delay + <code>tts.speak</code></li>
+                </ol>
+              </div>
+            </details>
+
+            <details>
+              <summary>Voice satellite</summary>
+              <div class="body">
+                <ol>
+                  <li>On phrase match in <code>!input conversation_command</code> build standard forecast text</li>
+                  <li>Optional AI pass</li>
+                  <li>Return text with <code>set_conversation_response</code></li>
+                </ol>
+              </div>
+            </details>
+          </div>
+
+          <!-- Variables -->
+          <div class="pane" id="p4">
+            <div class="grid">
+              <div class="row">
+                <strong>Blueprint inputs consumed</strong>
+                <div class="muted" style="margin-top:6px"><code>weather_entity</code>, <code>tts_engine</code>, <code>speakers</code>, <code>voice</code>, <code>volume_level</code>, <code>preroll_ms</code>, <code>use_ai_rewrite</code>, <code>ai_task_entity</code>, <code>ai_rewrite_prompt</code>, <code>enable_* switches</code>, <code>hour_pattern</code>, <code>minute_offset</code>, <code>start_time</code>, <code>end_time</code>, <code>days_of_week</code>, <code>precip_threshold</code>, <code>hours_ahead</code>, <code>minutes_before_announce</code>, <code>alarm_volume_level</code>, <code>personal_name</code>, <code>webhook_id</code>, <code>conversation_command</code></div>
+              </div>
+              <div class="row">
+                <strong>Runtime variables</strong>
+                <ul class="muted" style="margin:6px 0 0 18px">
+                  <li><code>d</code>, <code>h</code> → daily/hourly responses</li>
+                  <li><code>daily_list</code>, <code>hourly_list</code>, <code>hits</code>, <code>first_hit</code>, <code>hit_pp</code>, <code>hit_clock</code>, <code>precip_kind</code></li>
+                  <li><code>msg</code> → crafted text; <code>spoken</code> → final text after AI pass</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="muted">Note: This mock is static and mirrors your YAML structure. Update this page when the blueprint changes.</p>
       </section>
-      <!-- ======= AUTOGENERATED MOCK END ======= -->
+      <!-- ======= /Automation Mock ======= -->
+
+      <section id="webhook" class="card">
+        <h2>Webhook alarm: Android & iOS</h2>
+        <h3>Canonical URL format</h3>
+        <pre><code>http://homeassistant.local:8123/api/webhook/&lt;WEBHOOK_ID_FROM_INPUT&gt;</code></pre>
+
+        <div class="grid cols-2">
+          <div>
+            <h3>Android (Shortcuts or Automation app)</h3>
+            <ol>
+              <li>Create a new shortcut/automation named <em>Weather Alarm</em>.</li>
+              <li>Add an HTTP <strong>POST</strong> action.</li>
+              <li>URL: use the canonical webhook URL above with your <code>webhook_id</code>.</li>
+              <li>Headers: none required when on local network.</li>
+              <li>Body: leave empty.</li>
+              <li>Save and run the shortcut to trigger the blueprint’s “Alarm webhook” path.</li>
+            </ol>
+            <p class="muted">If you use Nabu Casa remote URL, replace host with your remote base URL.</p>
+          </div>
+          <div>
+            <h3>iOS (Shortcuts app)</h3>
+            <ol>
+              <li>Open Shortcuts → “+” → <em>Add Action</em> → “Get Contents of URL”.</li>
+              <li>Method: <strong>POST</strong>.</li>
+              <li>URL: <code>http://homeassistant.local:8123/api/webhook/&lt;WEBHOOK_ID_FROM_INPUT&gt;</code></li>
+              <li>Request Body: <em>None</em>.</li>
+              <li>Optional: Add “Set Volume” before the request to adjust device volume.</li>
+              <li>Save as <em>Weather Alarm</em>. Run it to test.</li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <section id="trouble" class="card">
+        <h2>Troubleshooting</h2>
+        <ul>
+          <li><strong>No audio:</strong> Confirm <code>speakers</code> includes at least one <code>media_player</code>. Increase <code>preroll_ms</code> if the first syllable is cut.</li>
+          <li><strong>No precip mention:</strong> Your hourly source may lack <code>precipitation_probability</code>. The line is omitted by design.</li>
+          <li><strong>AI errors:</strong> Turn off <code>use_ai_rewrite</code> to confirm base message. Check your <code>ai_task</code> entity.</li>
+          <li><strong>Voice phrases not responding:</strong> Ensure Conversation integration is enabled and phrases match lines in <code>conversation_command</code>.</li>
+        </ul>
+      </section>
+
+      <section id="faq" class="card">
+        <h2>FAQ</h2>
+        <details open>
+          <summary>How do I schedule every 3 hours at minute 3?</summary>
+          <div class="body">Set <code>hour_pattern</code> to <code>/3</code> and <code>minute_offset</code> to <code>3</code>.</div>
+        </details>
+        <details>
+          <summary>How do I change the voice?</summary>
+          <div class="body">Set <code>voice</code> to a voice ID your TTS engine supports. Example: <code>en_US-carlin-high</code>.</div>
+        </details>
+        <details>
+          <summary>What’s the correct webhook URL?</summary>
+          <div class="body">Use <code>http://homeassistant.local:8123/api/webhook/&lt;WEBHOOK_ID_FROM_INPUT&gt;</code>. Replace the placeholder with your blueprint input.</div>
+        </details>
+      </section>
 
       <section id="folders" class="card">
         <h2>Repo layout</h2>
@@ -166,11 +425,10 @@
           <li><strong>/backup/</strong> — Snapshots</li>
           <li><strong>/development/</strong> — Drafts</li>
           <li><strong>/docs/index.html</strong> — This page</li>
-          <li><strong>/tools/render_mock.py</strong> — Generator for the mock</li>
         </ul>
       </section>
 
-      <footer>© Weather — Forecast TTS (AI Optional). This page is pure HTML. The mock is regenerated on push.</footer>
+      <footer>© Weather — Forecast TTS (AI Optional). Pure HTML documentation. Editor-style mock uses CSS only.</footer>
     </div>
   </main>
 </div>
