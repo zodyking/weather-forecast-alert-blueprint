@@ -226,7 +226,36 @@ blueprint:
                   value: "43"
                 - label: "44"
                   value: "44"
-                - 45 to 59 omitted for brevity
+                - label: "45"
+                  value: "45"
+                - label: "46"
+                  value: "46"
+                - label: "47"
+                  value: "47"
+                - label: "48"
+                  value: "48"
+                - label: "49"
+                  value: "49"
+                - label: "50"
+                  value: "50"
+                - label: "51"
+                  value: "51"
+                - label: "52"
+                  value: "52"
+                - label: "53"
+                  value: "53"
+                - label: "54"
+                  value: "54"
+                - label: "55"
+                  value: "55"
+                - label: "56"
+                  value: "56"
+                - label: "57"
+                  value: "57"
+                - label: "58"
+                  value: "58"
+                - label: "59"
+                  value: "59"
         start_time:
           name: Start Time
           description: The earliest time of day (in HH:MM:SS format) when time-based announcements can occur. Announcements will only trigger between this and the end time.
@@ -543,8 +572,8 @@ action:
                 {% set now_bits = [] %}
                 {% if now_cond_h %}{% set now_bits = now_bits + [now_cond_h | capitalize] %}{% endif %}
                 {% if now_temp is not none %}{% set now_bits = now_bits + [ (now_temp | round(0) ~ ' degrees') ] %}{% endif %}
-                {% if now_hum is not none %}{% set now_bits = now_bits + [ ('humidity ' ~ now_hum ~ '%') ] %}{% endif %}
-                {% if now_bits | length > 0 %}{% set p = p + ['Right now: ' ~ (now_bits | join(', ')) ~ '.'] %}{% endif %}
+                {% if now_hum is not none %}{% set now_bits = now_bits + [ ('humidity ' ~ now_hum ~ '%') ]}{% endif %}
+                {% if now_bits | length > 0 %}{% set p = p + ['Right now: ' ~ (  now_bits | join(', ')) ~ '.'] %}{% endif %}
                 {% set today_bits = [] %}
                 {% if mention_expect %}{% set today_bits = today_bits + ['Expect ' ~ today_cond_h ~ '.'] %}{% endif %}
                 {% if high is not none %}{% set today_bits = today_bits + ['High ' ~ (high | round(0)) ~ ' degrees.'] %}{% endif %}
@@ -599,17 +628,193 @@ action:
           - condition: trigger
             id: current_change
         sequence:
-          # ... (unchanged)
+          - variables:
+              now_cond_raw: "{{ trigger.to_state.state | lower }}"
+              now_cond_h: "{% set s = now_cond_raw %} {% set s = s | replace('_',' ') | replace('-',' ') %} {% set s = s | replace('partlycloudy','partly cloudy') | replace('clearnight','clear night') %} {{ s | trim }}"
+              from_cond_raw: "{{ trigger.from_state.state | default('unknown') | lower }}"
+              now_temp: "{{ trigger.to_state.attributes.temperature | round(0) }}"
+              is_change: "{{ now_cond_raw != from_cond_raw }}"
+              msg: "Weather update: It's now {{ now_temp }} degrees and {{ now_cond_h }}."
+              i_ai: !input use_ai_rewrite
+              i_ai_task: !input ai_task_entity
+              i_ai_text: !input ai_rewrite_prompt
+          - if: "{{ is_change }}"
+            then:
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ i_ai and (i_ai_task | default('') | string) != '' }}"
+                    sequence:
+                      - action: ai_task.generate_data
+                        data:
+                          entity_id: "{{ i_ai_task }}"
+                          task_name: "weather message"
+                          instructions: "{{ i_ai_text }}\nMessage:\n\"{{ msg | replace('\"','\\\\\"') }}\""
+                        response_variable: aimsg
+                      - variables:
+                          spoken: "{{ aimsg.data | default(msg) }}"
+                default:
+                  - variables:
+                      spoken: "{{ msg }}"
+              - action: media_player.volume_set
+                target:
+                  entity_id: !input speakers
+                data:
+                  volume_level: !input current_change_volume_level
+              - repeat:
+                  for_each: !input speakers
+                  sequence:
+                    - delay:
+                        milliseconds: !input preroll_ms
+                    - action: tts.speak
+                      target:
+                        entity_id: !input tts_engine
+                      data:
+                        cache: true
+                        media_player_entity_id: "{{ repeat.item }}"
+                        message: "{{ spoken | trim }}"
+                        options:
+                          voice: !input voice
       - conditions:
           - condition: trigger
             id: upcoming_change
         sequence:
-          # ... (unchanged)
+          - action: weather.get_forecasts
+            target:
+              entity_id: !input weather_entity
+            data:
+              type: hourly
+            response_variable: h
+          - variables:
+              hourly_list: "{{ h.get(key,{}).get('forecast',[]) }}"
+              upcoming: "{{ hourly_list | selectattr('datetime','gt', now().isoformat()) | sort(attribute='datetime') | list }}"
+              next_hit: "{{ upcoming[0] if upcoming else {} }}"
+              next_dt: "{{ next_hit.get('datetime') }}"
+              next_ts: "{{ as_timestamp(next_dt) if next_dt else none }}"
+              min_to: "{{ ((next_ts - as_timestamp(now())) / 60) | round(0) if next_ts else 0 }}"
+              next_cond_raw: "{{ next_hit.get('condition','') | lower }}"
+              next_cond_h: "{% set s = next_cond_raw %} {% set s = s | replace('_',' ') | replace('-',' ') %} {% set s = s | replace('partlycloudy','partly cloudy') | replace('clearnight','clear night') %} {{ s | trim }}"
+              now_cond_raw: "{{ states(key) | lower }}"
+              now_is_precip: "{{ 'rain' in now_cond_raw or 'snow' in now_cond_raw or 'hail' in now_cond_raw or 'sleet' in now_cond_raw or 'pour' in now_cond_raw or 'lightning' in now_cond_raw }}"
+              next_is_precip: "{{ 'rain' in next_cond_raw or 'snow' in next_cond_raw or 'hail' in next_cond_raw or 'sleet' in next_cond_raw or 'pour' in next_cond_raw or 'lightning' in next_cond_raw }}"
+              should_announce: "{{ next_ts is not none and next_is_precip and not now_is_precip and 0 < min_to <= minutes_before_announce }}"
+              precip_kind: "{% if 'snow' in next_cond_h %}snow{% elif 'sleet' in next_cond_h or 'hail' in next_cond_h %}mixed precipitation {% elif next_cond_h %}rain{% else %}precipitation{% endif %}"
+              msg: "Weather alert: {{ precip_kind }} expected in about {{ min_to }} minutes."
+              i_ai: !input use_ai_rewrite
+              i_ai_task: !input ai_task_entity
+              i_ai_text: !input ai_rewrite_prompt
+          - if: "{{ should_announce }}"
+            then:
+              - choose:
+                  - conditions:
+                      - condition: template
+                        value_template: "{{ i_ai and (i_ai_task | default('') | string) != '' }}"
+                    sequence:
+                      - action: ai_task.generate_data
+                        data:
+                          entity_id: "{{ i_ai_task }}"
+                          task_name: "weather message"
+                          instructions: "{{ i_ai_text }}\nMessage:\n\"{{ msg | replace('\"','\\\\\"') }}\""
+                        response_variable: aimsg
+                      - variables:
+                          spoken: "{{ aimsg.data | default(msg) }}"
+                default:
+                  - variables:
+                      spoken: "{{ msg }}"
+              - action: media_player.volume_set
+                target:
+                  entity_id: !input speakers
+                data:
+                  volume_level: !input upcoming_change_volume_level
+              - repeat:
+                  for_each: !input speakers
+                  sequence:
+                    - delay:
+                        milliseconds: !input preroll_ms
+                    - action: tts.speak
+                      target:
+                        entity_id: !input tts_engine
+                      data:
+                        cache: true
+                        media_player_entity_id: "{{ repeat.item }}"
+                        message: "{{ spoken | trim }}"
+                        options:
+                          voice: !input voice
       - conditions:
           - condition: trigger
             id: alarm_webhook
         sequence:
-          # ... (unchanged)
+          - action: weather.get_forecasts
+            target:
+              entity_id: !input weather_entity
+            data:
+              type: daily
+            response_variable: d
+          - action: weather.get_forecasts
+            target:
+              entity_id: !input weather_entity
+            data:
+              type: hourly
+            response_variable: h
+          - variables:
+              name: !input personal_name
+              current_time: "{{ as_timestamp(now()) | timestamp_custom('%I:%M %p', true) | replace(' 0', ' ') }}"
+              now_temp: "{{ state_attr(key,'temperature') | round(0) }}"
+              now_cond_h: "{% set s = (states(key) or '') | lower %} {% set s = s | replace('_',' ') | replace('-',' ') %} {% set s = s | replace('partlycloudy','partly cloudy') | replace('clearnight','clear night') %} {{ s | trim }}"
+              daily_list: "{{ d.get(key,{}).get('forecast',[]) }}"
+              today: "{{ daily_list[0] if daily_list|length>0 else dict() }}"
+              high: "{{ today.get('temperature') | round(0) }}"
+              low: "{{ today.get('templow', today.get('temperature_low')) | round(0) }}"
+              hourly_list: "{{ h.get(key,{}).get('forecast',[]) }}"
+              hits: "{{ (hourly_list | selectattr('precipitation_probability','defined') | selectattr('precipitation_probability','ge', precip_threshold) | list) }}"
+              first_hit: "{{ hits[0] if hits|length>0 else dict() }}"
+              hit_pp: "{{ first_hit.get('precipitation_probability') | int(default=0) }}"
+              hit_cond_h: "{% set raw = (first_hit.get('condition','') | lower) %} {% set s = raw | replace('_',' ') | replace('-',' ') %} {% set s = s | replace('partlycloudy','partly cloudy') | replace('clearnight','clear night') %} {{ s | trim }}"
+              hit_ts: "{% set t = none %} {% if first_hit.get('datetime') %} {% set t = as_datetime(first_hit.get('datetime')) | as_timestamp %} {% endif %} {{ t }}"
+              hit_clock: "{% set out = '' %} {% if hit_ts is not none %} {% set out = (hit_ts | timestamp_custom('%I %p', true)) | replace(' 0',' ') %} {% endif %} {{ out }}"
+              precip_kind: "{% if 'snow' in hit_cond_h %}snow{% elif 'sleet' in hit_cond_h or 'hail' in hit_cond_h %}mixed precipitation {% elif hit_cond_h %}rain{% else %}precipitation{% endif %}"
+              precip_msg: "{% if hits | length > 0 and hit_pp > 0 %}expect {{ precip_kind }} later in the day around {{ hit_clock }} with a {{ hit_pp }}% chance.{% else %}{% endif %}"
+              msg: "here's your forecast. It's {{ current_time }}. Currently {{ now_temp }} degrees and {{ now_cond_h }}. {{ precip_msg }} High {{ high }} degrees. Low {{ low }} degrees."
+              i_ai: !input use_ai_rewrite
+              i_ai_task: !input ai_task_entity
+              i_ai_text: !input ai_rewrite_prompt
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ i_ai and (i_ai_task | default('') | string) != '' }}"
+                sequence:
+                  - action: ai_task.generate_data
+                    data:
+                      entity_id: "{{ i_ai_task }}"
+                      task_name: "weather message"
+                      instructions: "{{ i_ai_text }}\nMessage:\n\"{{ msg | replace('\"','\\\\\"') }}\""
+                    response_variable: aimsg
+                  - variables:
+                      spoken: "{{ aimsg.data | default(msg) }}"
+            default:
+              - variables:
+                  spoken: "{{ msg }}"
+          - variables:
+              spoken_final: "Good morning {{ name }}, {{ spoken }}"
+          - action: media_player.volume_set
+            target:
+              entity_id: !input speakers
+            data:
+              volume_level: !input alarm_volume_level
+          - repeat:
+              for_each: !input speakers
+              sequence:
+                - delay:
+                    milliseconds: !input preroll_ms
+                - action: tts.speak
+                  target:
+                    entity_id: !input tts_engine
+                  data:
+                    cache: true
+                    media_player_entity_id: "{{ repeat.item }}"
+                    message: "{{ spoken_final | trim }}"
+                    options:
+                      voice: !input voice
       - conditions:
           - condition: trigger
             id: voice_satellite
@@ -657,11 +862,11 @@ action:
                 {% set p = p + [greeting ~ '! ' ~ day_name ~ "'s forecast."] %}
                 {% set now_bits = [] %}
                 {% if now_cond_h %}{% set now_bits = now_bits + [now_cond_h | capitalize] %}{% endif %}
-                {% if now_temp is not none %}{% set now_bits = now_bits + [ (now_temp | round(0) ~ ' degrees') ] %}{% endif %}
-                {% if now_hum is not none %}{% set now_bits = now_bits + [ ('humidity ' ~ now_hum ~ '%') ] %}{% endif %}
-                {% if now_bits | length > 0 %}{% set p = p + ['Right now: ' ~ (now_bits | join(', ')) ~ '.'] %}{% endif %}
+                {% if now_temp is not none %}{% set now_bits = now_bits + [ (now_temp | round(0) ~ ' degrees') ]}{% endif %}
+                {% if now_hum is not none %}{% set now_bits = now_bits + [ ('humidity ' ~ now_hum ~ '%') ]}{% endif %}
+                {% if now_bits | length > 0 %}{% set p = p + ['Right now: ' ~ (now_bits | join(', ')) ~ '.']}{% endif %}
                 {% set today_bits = [] %}
-                {% if mention_expect %}{% set today_bits = today_bits + ['Expect ' ~ today_cond_h ~ '.'] %}{% endif %}
+                {% if mention_expect %}{% set today_bits = today_bits + ['Expect ' ~ today_cond_h ~ '.']}{% endif %}
                 {% if high is not none %}{% set today_bits = today_bits + ['High ' ~ (high | round(0)) ~ ' degrees.']}{% endif %}
                 {% if low is not none %}{% set today_bits = today_bits + ['Low ' ~ (low | round(0)) ~ ' degrees.']}{% endif %}
                 {% if today_bits | length > 0 %}{% set p = p + [ today_bits | join(' ') ]}{% endif %}
