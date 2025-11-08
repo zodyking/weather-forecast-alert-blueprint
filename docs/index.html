@@ -4,89 +4,95 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Weather — Forecast TTS (AI Optional) · Documentation</title>
-<meta name="description" content="Documentation for the Weather — Forecast TTS (AI Optional) Home Assistant blueprint." />
+<meta name="description" content="Complete documentation for the Weather — Forecast TTS (AI Optional) Home Assistant blueprint: setup, inputs, triggers, conditions, actions, variables, webhook, voice, AI rewrite, and troubleshooting." />
+
+<!-- ===== Apple-like dark theme (no external deps) ===== -->
 <style>
   :root{
-    --bg:#0b0e14; --panel:#0f1421; --card:#111a2e; --text:#e6edf3; --muted:#9aa4b2;
-    --brand:#62a5ff; --accent:#22c55e; --border:#1f2940; --code:#0b1220; --warn:#f59e0b;
-    --err:#ef4444; --radius:14px; --shadow:0 12px 28px rgba(0,0,0,.35)
+    --bg:#0a0a0a; --surface:#0f0f10; --panel:#111214; --card:#141518; --elev:#191a1f;
+    --text:#e7e7ea; --muted:#9da3ad; --border:#24262c; --line:#1c1d22; --brand:#0a84ff; --brand2:#30d158;
+    --danger:#ff453a; --warn:#ffd60a; --codebg:#0b0c10; --shadow:0 20px 50px rgba(0,0,0,.55); --r:14px
   }
   @media (prefers-color-scheme:light){
-    :root{ --bg:#f6f8fb; --panel:#ffffff; --card:#ffffff; --text:#0b1220; --muted:#5b6573;
-           --brand:#2563eb; --accent:#10b981; --border:#dfe6ef; --code:#0f172a; --shadow:0 12px 28px rgba(16,24,40,.12)}
+    :root{
+      --bg:#fbfbfd; --surface:#ffffff; --panel:#ffffff; --card:#ffffff; --elev:#f6f7fb;
+      --text:#111114; --muted:#4a4f58; --border:#e6e7ec; --line:#eef0f4; --brand:#0071e3; --brand2:#34c759;
+      --danger:#ff3b30; --warn:#ffcc00; --codebg:#0f172a; --shadow:0 18px 36px rgba(18,24,40,.14)
+    }
   }
   *{box-sizing:border-box}
-  html,body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 system-ui,-apple-system,Segoe UI,Roboto,Arial,Helvetica,sans-serif}
+  html,body{margin:0;background:radial-gradient(1200px 700px at 20% -10%,rgba(10,132,255,.18),transparent 50%),radial-gradient(900px 600px at 120% 0,rgba(48,209,88,.12),transparent 60%),var(--bg);color:var(--text);font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol"}
   a{color:var(--brand);text-decoration:none}
-  .wrap{max-width:1200px;margin:0 auto;padding:24px}
-  header.hero{border-bottom:1px solid var(--border);
-    background:
-      radial-gradient(900px 400px at 8% -10%, rgba(98,165,255,.25), transparent 60%),
-      radial-gradient(800px 500px at 110% 0%, rgba(34,197,94,.18), transparent 60%),
-      linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0));
-  }
-  .hero-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:28px;align-items:center;padding:40px 24px}
+  .wrap{max-width:1280px;margin:0 auto;padding:24px}
+  header.hero{position:relative;border-bottom:1px solid var(--line);background:linear-gradient(180deg,rgba(255,255,255,.04),transparent)}
+  .hero-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:28px;align-items:center;padding:46px 24px}
   @media (max-width:1000px){.hero-grid{grid-template-columns:1fr}}
-  .badge{display:inline-block;padding:4px 10px;border:1px solid rgba(98,165,255,.45);color:var(--brand);
-    border-radius:999px;font-size:12px;background:rgba(98,165,255,.12);margin-bottom:10px}
-  h1{margin:0 0 8px 0;font-size:40px} .sub{color:var(--muted);margin:0}
-  .btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+  .badge{display:inline-block;padding:4px 10px;border:1px solid color-mix(in oklab,var(--brand),transparent 55%);color:var(--brand);
+         border-radius:999px;font-size:12px;background:color-mix(in oklab,var(--brand),transparent 88%);margin-bottom:12px}
+  h1{margin:0 0 6px 0;font-size:42px;font-weight:700;letter-spacing:-.01em}
+  .sub{color:var(--muted);margin:0}
+  .btns{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
   .btn{display:inline-flex;gap:8px;align-items:center;padding:12px 14px;border-radius:12px;border:1px solid var(--brand);
-    background:var(--brand);color:#fff;font-weight:600;box-shadow:var(--shadow)}
+       background:var(--brand);color:#fff;font-weight:600;box-shadow:var(--shadow)}
   .btn.secondary{background:transparent;color:var(--brand)}
-  .banner{width:100%;border-radius:16px;border:1px solid var(--border);box-shadow:var(--shadow)}
-  main.layout{display:grid;grid-template-columns:300px 1fr;gap:22px;margin-top:24px}
-  @media (max-width:1050px){ main.layout{grid-template-columns:1fr} }
-  nav.side{position:sticky;top:16px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:12px;height:max-content}
-  nav h3{margin:6px 0 10px;font-size:16px}
-  details.group{border:1px solid var(--border);border-radius:10px;background:transparent;margin:8px 0}
+  .banner{width:100%;border-radius:18px;border:1px solid var(--border);box-shadow:var(--shadow)}
+  main.layout{display:grid;grid-template-columns:320px 1fr;gap:24px;margin-top:26px}
+  @media (max-width:1100px){ main.layout{grid-template-columns:1fr} }
+
+  /* Sidebar */
+  nav.side{position:sticky;top:16px;background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px;height:max-content}
+  nav h3{margin:8px 0 10px;font-size:16px}
+  .search{display:grid;gap:10px}
+  .search input[type=search]{width:100%;padding:12px 12px;border:1px solid var(--border);border-radius:10px;background:var(--elev);color:var(--text)}
+  .search .results{border:1px solid var(--border);background:var(--elev);border-radius:10px;max-height:320px;overflow:auto;display:none}
+  .search .res{padding:8px 10px;border-bottom:1px solid var(--line);cursor:pointer}
+  .search .res:last-child{border-bottom:0}
+  .search .res small{display:block;color:var(--muted)}
+  details.group{border:1px solid var(--border);border-radius:10px;background:transparent;margin:10px 0}
   details.group>summary{cursor:pointer;padding:10px 12px;font-weight:700}
   .links{padding:6px 12px 12px}
   .links a{display:block;padding:6px 0;color:var(--muted);font-size:14px}
-  .searchbox{display:flex;gap:8px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--panel)}
-  select.jump{flex:1;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text)}
-  .go{padding:10px 12px;border-radius:10px;border:1px solid var(--brand);background:var(--brand);color:#fff;font-weight:600}
-  section.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
-  h2{margin:4px 0 12px;font-size:26px} h3{margin:18px 0 8px;font-size:20px}
-  .grid{display:grid;gap:16px} .cols-2{grid-template-columns:1fr} @media (min-width:900px){.cols-2{grid-template-columns:1fr 1fr}}
-  .call{border-left:4px solid var(--brand);background:rgba(98,165,255,.08);padding:12px;border-radius:10px}
-  .call.warn{border-left-color:var(--warn);background:rgba(245,158,11,.12)}
-  .table{width:100%;border-collapse:separate;border-spacing:0 8px}
-  .row{background:var(--panel);border:1px solid var(--border);border-radius:10px}
-  .table th,.table td{padding:10px 12px;vertical-align:top} .table th{color:#9aa4b2;text-align:left}
-  pre{background:var(--code);color:#c9e3ff;border:1px solid #102342;border-radius:12px;padding:14px;overflow:auto}
-  code{font-family:ui-monospace,Menlo,Consolas,monospace}
-  .pill{display:inline-block;padding:6px 10px;border:1px solid var(--border);border-radius:999px;background:var(--panel);color:#9aa4b2;margin-right:6px}
-  footer{color:#9aa4b2;text-align:center;padding:26px}
 
-  /* ======= HA-style Mock (pure HTML/CSS) ======= */
+  /* Cards */
+  section.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);padding:20px}
+  h2{margin:4px 0 12px;font-size:26px} h3{margin:18px 0 8px;font-size:20px}
+  .grid{display:grid;gap:16px}
+  .cols-2{grid-template-columns:1fr} @media (min-width:900px){.cols-2{grid-template-columns:1fr 1fr}}
+  .call{border-left:4px solid var(--brand);background:color-mix(in oklab,var(--brand),transparent 90%);padding:12px;border-radius:10px}
+  .call.warn{border-left-color:var(--warn);background:color-mix(in oklab,var(--warn),transparent 90%)}
+  .table{width:100%;border-collapse:separate;border-spacing:0 8px}
+  .row{background:var(--surface);border:1px solid var(--border);border-radius:10px}
+  .table th,.table td{padding:10px 12px;vertical-align:top} .table th{color:var(--muted);text-align:left}
+  pre{background:var(--codebg);color:#c9e3ff;border:1px solid #102342;border-radius:12px;padding:14px;overflow:auto}
+  code{font-family:ui-monospace,Menlo,Consolas,monospace}
+  .pill{display:inline-block;padding:6px 10px;border:1px solid var(--border);border-radius:999px;background:var(--elev);color:var(--muted);margin-right:6px}
+
+  /* HA editor-style mock */
   .hamock{margin:22px 0;border:1px solid var(--border);border-radius:14px;background:var(--panel);color:var(--text)}
   .hamock .bar{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--border);background:var(--card)}
   .hamock .title{font-weight:700}
-  .hamock .chip{display:inline-flex;gap:6px;align-items:center;padding:4px 10px;border:1px solid var(--border);border-radius:999px;background:#0000;color:#9aa4b2;font-size:12px}
+  .hamock .chip{display:inline-flex;gap:6px;align-items:center;padding:4px 10px;border:1px solid var(--border);border-radius:999px;background:#0000;color:var(--muted);font-size:12px}
   .hamock .tabs{display:flex;gap:2px;padding:0 10px;border-bottom:1px solid var(--border);background:var(--panel)}
-  .hamock input[type=radio]{position:absolute;opacity:0;pointer-events:none}
-  .hamock .tab{padding:10px 12px;border:1px solid transparent;border-radius:10px 10px 0 0;color:#9aa4b2;cursor:pointer}
-  .hamock input#t1:checked ~ .tabs label[for=t1],
-  .hamock input#t2:checked ~ .tabs label[for=t2],
-  .hamock input#t3:checked ~ .tabs label[for=t3],
-  .hamock input#t4:checked ~ .tabs label[for=t4]{border-color:var(--border);border-bottom-color:transparent;color:inherit;background:var(--panel)}
+  .hamock .tab{padding:10px 12px;border:1px solid transparent;border-radius:10px 10px 0 0;color:var(--muted);cursor:pointer;background:transparent}
+  .hamock .tab.active{border-color:var(--border);border-bottom-color:transparent;color:var(--text);background:var(--panel)}
   .hamock .pane{display:none;padding:14px 16px}
-  .hamock input#t1:checked ~ .pane#p1,
-  .hamock input#t2:checked ~ .pane#p2,
-  .hamock input#t3:checked ~ .pane#p3,
-  .hamock input#t4:checked ~ .pane#p4{display:block}
+  .hamock .pane.active{display:block}
   .hamock .grid{display:grid;gap:10px}
-  .hamock .row{border:1px solid var(--border);border-radius:12px;background:var(--card);padding:12px}
-  .hamock code{background:rgba(99,102,241,.08);border:1px solid var(--border);border-radius:6px;padding:1px 6px}
-  .hamock .badge{display:inline-block;font-size:12px;padding:2px 8px;border:1px solid var(--border);border-radius:999px;color:#9aa4b2;margin-left:6px}
-  .hamock details{border:1px solid var(--border);border-radius:10px;background:var(--panel)}
-  .hamock details+details{margin-top:8px}
-  .hamock summary{cursor:pointer;padding:10px 12px;font-weight:600}
-  .hamock .body{padding:0 12px 12px}
-  .muted{color:#9aa4b2}
-  /* Highlight anchors on jump */
-  :target{scroll-margin-top:80px; outline:2px solid var(--brand); outline-offset:6px; border-radius:8px}
+  .ha-card{border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:12px}
+  .ha-h{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+  .ha-h .id{margin-left:auto;font-size:12px;color:var(--muted)}
+  .kv code{background:color-mix(in oklab,var(--brand),transparent 88%);border:1px solid var(--border);border-radius:6px;padding:1px 6px}
+  .toggle{appearance:none;width:36px;height:22px;background:#555;border-radius:999px;position:relative;outline:none;cursor:pointer;border:1px solid var(--border)}
+  .toggle:checked{background:var(--brand)}
+  .toggle:before{content:"";position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .2s}
+  .toggle:checked:before{transform:translateX(14px)}
+  .ha-list{display:grid;gap:10px}
+  .ha-split{display:grid;gap:12px;grid-template-columns:1fr} @media (min-width:900px){.ha-split{grid-template-columns:1fr 1fr}}
+  .muted{color:var(--muted)}
+  .highlight{background:linear-gradient(90deg,rgba(10,132,255,.22),rgba(48,209,88,.18))}
+  :target{scroll-margin-top:90px; outline:2px solid var(--brand); outline-offset:6px; border-radius:8px}
+
+  footer{color:var(--muted);text-align:center;padding:26px}
 </style>
 </head>
 <body>
@@ -96,7 +102,7 @@
     <div>
       <span class="badge">Home Assistant Blueprint</span>
       <h1>Weather — Forecast TTS <span class="muted">(AI Optional)</span></h1>
-      <p class="sub">TV-style forecasts by schedule, sensor, webhook, or voice. Uses daily + hourly data, calls out first likely precip window with time and %, optional AI rephrase that preserves facts.</p>
+      <p class="sub">TV-style forecasts by schedule, sensor, webhook, or voice. Uses daily + hourly data, calls out the first likely precip window with time and %, optional AI rephrase that preserves facts.</p>
       <div class="btns">
         <a class="btn" href="homeassistant://blueprint/import?url=https://raw.githubusercontent.com/zodyking/weather-forecast-alert-blueprint/refs/heads/main/weather-forecast.yaml">Import to Home Assistant</a>
         <a class="btn secondary" target="_blank" rel="noopener" href="https://raw.githubusercontent.com/zodyking/weather-forecast-alert-blueprint/refs/heads/main/weather-forecast.yaml">Raw YAML</a>
@@ -112,27 +118,13 @@
 
 <div class="wrap">
   <main class="layout">
+    <!-- ===== Sidebar with real search ===== -->
     <nav class="side" aria-label="Documentation">
-      <h3>Quick Jump</h3>
-      <form class="searchbox">
-        <label for="jump" class="muted" style="position:absolute;left:-9999px">Jump to section</label>
-        <select id="jump" name="jump" class="jump" onchange="if(this.value)location.href=this.value">
-          <option value="">Search common tasks…</option>
-          <option value="#reqs">Requirements</option>
-          <option value="#inputs">Configure inputs</option>
-          <option value="#time">Schedule hourly/every N hours</option>
-          <option value="#sensor">Announce on motion/presence</option>
-          <option value="#webhook">Set up webhook alarm</option>
-          <option value="#voice">Voice phrases</option>
-          <option value="#precip">Tune precip threshold</option>
-          <option value="#tts">TTS engine, voice, pre-roll</option>
-          <option value="#ai">Enable AI rewrite</option>
-          <option value="#mock">Automation mock</option>
-          <option value="#trouble">Troubleshooting</option>
-          <option value="#faq">FAQ</option>
-        </select>
-        <button class="go" formaction="#inputs">Go</button>
-      </form>
+      <h3>Search docs</h3>
+      <div class="search">
+        <input id="q" type="search" placeholder="Search anything… (press Enter)" autocomplete="off" />
+        <div id="results" class="results" role="listbox" aria-label="Search results"></div>
+      </div>
 
       <details class="group" open>
         <summary>Getting started</summary>
@@ -146,7 +138,7 @@
         <summary>Configuration</summary>
         <div class="links">
           <a href="#inputs">Inputs overview</a>
-          <a href="#time">Time-based announcements</a>
+          <a href="#time">Time-based</a>
           <a href="#sensor">Sensor-triggered</a>
           <a href="#changes">Change announcements</a>
           <a href="#precip">Precip settings</a>
@@ -159,19 +151,22 @@
       <details class="group" open>
         <summary>References</summary>
         <div class="links">
-          <a href="#mock">Automation mock</a>
+          <a href="#mock">Automation editor mock</a>
+          <a href="#variables">Variables & examples</a>
+          <a href="#logic">Logic details</a>
           <a href="#faq">FAQ</a>
           <a href="#trouble">Troubleshooting</a>
         </div>
       </details>
     </nav>
 
+    <!-- ===== Main content ===== -->
     <div>
       <section id="overview" class="card">
         <h2>Overview</h2>
         <div class="grid cols-2">
-          <div class="call">Fetches daily and hourly forecasts, crafts a concise forecast, optional AI rephrase that preserves facts, then speaks on selected speakers with a pre-roll delay.</div>
-          <div class="call warn">Precipitation callouts require hourly <code>precipitation_probability</code>. If missing, the precip line is skipped.</div>
+          <div class="call">Fetches daily + hourly forecasts, crafts a concise message, optional AI rephrase that preserves facts, then speaks on selected speakers with a pre-roll delay.</div>
+          <div class="call warn">Precipitation callouts require hourly <code>precipitation_probability</code>. If missing, the precip line is skipped by design.</div>
         </div>
       </section>
 
@@ -190,8 +185,8 @@
           <tr><th>Group</th><th>Key(s)</th><th>Description</th></tr>
           <tr class="row"><td>Weather</td><td><code>weather_entity</code></td><td>Source of current, daily, hourly.</td></tr>
           <tr class="row"><td id="tts">TTS</td><td><code>tts_engine</code>, <code>speakers</code>, <code>voice</code>, <code>volume_level</code>, <code>preroll_ms</code></td><td>Engine, targets, voice, volume, wake-up delay.</td></tr>
-          <tr class="row"><td id="ai">AI</td><td><code>ai_task_entity</code>, <code>use_ai_rewrite</code>, <code>ai_rewrite_prompt</code></td><td>Optional AI pass with no fact changes.</td></tr>
-          <tr class="row"><td id="time">Time</td><td><code>enable_time_based</code>, <code>hour_pattern</code>, <code>minute_offset</code>, <code>start_time</code>, <code> end_time</code>, <code>days_of_week</code></td><td>Schedule and window.</td></tr>
+          <tr class="row"><td id="ai">AI</td><td><code>ai_task_entity</code>, <code>use_ai_rewrite</code>, <code>ai_rewrite_prompt</code></td><td>Optional AI pass with strict no-fact-change rules.</td></tr>
+          <tr class="row"><td id="time">Time</td><td><code>enable_time_based</code>, <code>hour_pattern</code>, <code>minute_offset</code>, <code>start_time</code>, <code>end_time</code>, <code>days_of_week</code></td><td>Schedule and windowing.</td></tr>
           <tr class="row"><td id="sensor">Sensor</td><td><code>enable_sensor_triggered</code>, <code>presence_sensors</code></td><td>Announce when sensors turn <code>on</code>.</td></tr>
           <tr class="row"><td id="webhook">Webhook</td><td><code>enable_alarm_announce</code>, <code>webhook_id</code>, <code>personal_name</code>, <code>alarm_volume_level</code></td><td>On-demand personal report.</td></tr>
           <tr class="row"><td id="changes">Change</td><td><code>enable_current_change_announce</code>, <code>current_change_volume_level</code>, <code>enable_upcoming_change_announce</code>, <code>upcoming_change_volume_level</code>, <code>minutes_before_announce</code></td><td>Real-time and impending alerts.</td></tr>
@@ -200,166 +195,206 @@
         </table>
       </section>
 
-      <!-- ======= Automation Mock (pure HTML/CSS, no JS) ======= -->
+      <!-- ===== Editor-style HA mock with clickable tabs ===== -->
       <section id="mock" class="card">
-        <h2>Automation Mock (editor-style)</h2>
-        <div class="hamock">
+        <h2>Automation Editor Mock</h2>
+        <div class="hamock" role="region" aria-label="Home Assistant editor mock">
           <div class="bar">
-            <div class="title">Automation (from blueprint): Weather — Forecast TTS</div>
+            <div class="title">Automation from blueprint: Weather — Forecast TTS</div>
             <div>
               <span class="chip">Mode: queued</span>
               <span class="chip">Max: 4</span>
             </div>
           </div>
 
-          <!-- Radios drive tabs -->
-          <input type="radio" name="hamocktab" id="t1" checked>
-          <input type="radio" name="hamocktab" id="t2">
-          <input type="radio" name="hamocktab" id="t3">
-          <input type="radio" name="hamocktab" id="t4">
-
           <div class="tabs">
-            <label class="tab" for="t1">Triggers</label>
-            <label class="tab" for="t2">Conditions</label>
-            <label class="tab" for="t3">Actions</label>
-            <label class="tab" for="t4">Variables</label>
+            <button class="tab active" data-tab="triggers" type="button">Triggers</button>
+            <button class="tab" data-tab="conditions" type="button">Conditions</button>
+            <button class="tab" data-tab="actions" type="button">Actions</button>
+            <button class="tab" data-tab="variables" type="button">Variables</button>
           </div>
 
           <!-- Triggers -->
-          <div class="pane" id="p1">
-            <div class="grid">
-              <div class="row" id="trg-time">
-                <strong>Time pattern</strong> <span class="badge">id: time_based</span>
-                <div>Hours: <code>!input hour_pattern</code> • Minutes: <code>!input minute_offset</code></div>
+          <div class="pane active" id="pane-triggers">
+            <div class="ha-list">
+              <div class="ha-card" id="trg-time">
+                <div class="ha-h"><strong>Time pattern</strong><span class="id">id: time_based</span></div>
+                <div class="kv">Hours: <code>!input hour_pattern</code> • Minutes: <code>!input minute_offset</code></div>
+                <div class="muted">Runs only between <code>!input start_time</code>–<code>!input end_time</code> on chosen <code>!input days_of_week</code> when enabled.</div>
               </div>
-              <div class="row" id="trg-sensor">
-                <strong>State</strong> (presence sensors) <span class="badge">id: sensor_trigger</span>
-                <div>Entity: <code>!input presence_sensors</code> → <code>on</code></div>
+
+              <div class="ha-card" id="trg-sensor">
+                <div class="ha-h"><strong>State</strong> (presence sensors)<span class="id">id: sensor_trigger</span></div>
+                <div class="kv">Entity: <code>!input presence_sensors</code> → <code>on</code></div>
+                <div class="muted">Great for “arrive home and speak forecast.”</div>
+                <label class="muted">Enable <input class="toggle" type="checkbox" checked title="Enable Sensor Triggered" /> <span>!input enable_sensor_triggered</span></label>
               </div>
-              <div class="row" id="trg-change">
-                <strong>State</strong> (weather entity change) <span class="badge">id: current_change</span>
-                <div>Entity: <code>!input weather_entity</code></div>
+
+              <div class="ha-card" id="trg-change">
+                <div class="ha-h"><strong>State</strong> (weather entity change)<span class="id">id: current_change</span></div>
+                <div class="kv">Entity: <code>!input weather_entity</code></div>
+                <div class="muted">Speaks when condition changes, e.g., “It’s now 45° and cloudy.”</div>
+                <label class="muted">Enable <input class="toggle" type="checkbox" checked title="Enable Current Change" /> <span>!input enable_current_change_announce</span></label>
               </div>
-              <div class="row" id="trg-upcoming">
-                <strong>Time pattern</strong> (upcoming change poll) <span class="badge">id: upcoming_change</span>
-                <div>Minutes: <code>/5</code></div>
+
+              <div class="ha-card" id="trg-upcoming">
+                <div class="ha-h"><strong>Time pattern</strong> (upcoming change poll)<span class="id">id: upcoming_change</span></div>
+                <div class="kv">Minutes: <code>/5</code></div>
+                <div class="muted">Find next precip start within <code>!input minutes_before_announce</code> if not precipitating now.</div>
+                <label class="muted">Enable <input class="toggle" type="checkbox" checked title="Enable Upcoming Change" /> <span>!input enable_upcoming_change_announce</span></label>
               </div>
-              <div class="row" id="trg-webhook">
-                <strong>Webhook</strong> <span class="badge">id: alarm_webhook</span>
-                <div>URL: <code>http://homeassistant.local:8123/api/webhook/&lt;!input webhook_id&gt;</code> • Methods: <code>POST, PUT, GET, HEAD</code> • Local only</div>
+
+              <div class="ha-card" id="trg-webhook">
+                <div class="ha-h"><strong>Webhook</strong><span class="id">id: alarm_webhook</span></div>
+                <div class="kv">URL: <code>http://homeassistant.local:8123/api/webhook/&lt;!input webhook_id&gt;</code> • Methods: <code>POST, PUT, GET, HEAD</code> • Local only</div>
+                <label class="muted">Enable <input class="toggle" type="checkbox" title="Enable Alarm Announce" /> <span>!input enable_alarm_announce</span></label>
               </div>
-              <div class="row" id="trg-voice">
-                <strong>Conversation</strong> <span class="badge">id: voice_satellite</span>
-                <div>Commands: lines in <code>!input conversation_command</code></div>
+
+              <div class="ha-card" id="trg-voice">
+                <div class="ha-h"><strong>Conversation</strong><span class="id">id: voice_satellite</span></div>
+                <div class="kv">Commands: lines in <code>!input conversation_command</code></div>
+                <label class="muted">Enable <input class="toggle" type="checkbox" title="Enable Voice Satellite" /> <span>!input enable_voice_satellite</span></label>
               </div>
             </div>
           </div>
 
           <!-- Conditions -->
-          <div class="pane" id="p2">
-            <details open>
-              <summary>Master OR across scenarios</summary>
-              <div class="body">
-                <ul>
-                  <li><strong>Time-based</strong> AND between <code>!input start_time</code>–<code>!input end_time</code> AND <code>!input enable_time_based</code> AND day ∈ <code>!input days_of_week</code></li>
-                  <li><strong>Sensor-triggered</strong> AND <code>!input enable_sensor_triggered</code></li>
-                  <li><strong>Current change</strong> AND <code>!input enable_current_change_announce</code></li>
-                  <li><strong>Upcoming change</strong> AND <code>!input enable_upcoming_change_announce</code></li>
-                  <li><strong>Alarm webhook</strong> AND <code>!input enable_alarm_announce</code></li>
-                  <li><strong>Voice satellite</strong> AND <code>!input enable_voice_satellite</code></li>
-                </ul>
-                <p class="muted">If any branch is true, the corresponding action sequence runs.</p>
-              </div>
-            </details>
+          <div class="pane" id="pane-conditions">
+            <div class="ha-card">
+              <div class="ha-h"><strong>Master OR across scenarios</strong></div>
+              <ul>
+                <li><strong>Time-based</strong>: between <code>!input start_time</code>–<code>!input end_time</code>, <code>!input enable_time_based</code> true, and day ∈ <code>!input days_of_week</code>.</li>
+                <li><strong>Sensor-triggered</strong>: <code>!input enable_sensor_triggered</code> true.</li>
+                <li><strong>Current change</strong>: <code>!input enable_current_change_announce</code> true.</li>
+                <li><strong>Upcoming change</strong>: <code>!input enable_upcoming_change_announce</code> true.</li>
+                <li><strong>Alarm webhook</strong>: <code>!input enable_alarm_announce</code> true.</li>
+                <li><strong>Voice satellite</strong>: <code>!input enable_voice_satellite</code> true.</li>
+              </ul>
+              <p class="muted">If any branch is true, its <em>Actions</em> sequence runs.</p>
+            </div>
           </div>
 
           <!-- Actions -->
-          <div class="pane" id="p3">
-            <details open>
-              <summary>Time-based / Sensor-triggered</summary>
-              <div class="body">
+          <div class="pane" id="pane-actions">
+            <div class="ha-split">
+              <div class="ha-card">
+                <div class="ha-h"><strong>Time-based / Sensor-triggered</strong></div>
                 <ol>
-                  <li><code>weather.get_forecasts</code> daily → <em>d</em>; hourly → <em>h</em></li>
-                  <li>Compose message: greeting + day; Right now (cond/temp/humidity); Today (if condition differs, high, low); First precip window within <code>!input hours_ahead</code> with time and <code>%</code> if <code>≥ !input precip_threshold</code></li>
-                  <li>Optional AI pass (<code>ai_task.generate_data</code>) if <code>!input use_ai_rewrite</code> and <code>!input ai_task_entity</code></li>
-                  <li><code>media_player.volume_set</code> → <code>!input volume_level</code></li>
-                  <li>For each <code>!input speakers</code>: delay <code>!input preroll_ms</code> ms, then <code>tts.speak</code> with <code>options.voice = !input voice</code></li>
+                  <li>Call <code>weather.get_forecasts</code> daily → <code>d</code>; hourly → <code>h</code>.</li>
+                  <li>Compose message with greeting, “Right now,” “Today,” and first precip window within <code>!input hours_ahead</code> if <code>≥ !input precip_threshold</code>.</li>
+                  <li>Optional AI pass via <code>ai_task.generate_data</code> when <code>!input use_ai_rewrite</code> and <code>!input ai_task_entity</code> set.</li>
+                  <li><code>media_player.volume_set</code> to <code>!input volume_level</code>.</li>
+                  <li>For each <code>!input speakers</code>: delay <code>!input preroll_ms</code> ms, then <code>tts.speak</code> with <code>options.voice = !input voice</code>.</li>
                 </ol>
               </div>
-            </details>
 
-            <details>
-              <summary>Current change</summary>
-              <div class="body">
+              <div class="ha-card">
+                <div class="ha-h"><strong>Current change</strong></div>
                 <ol>
-                  <li>On weather entity state change</li>
-                  <li>Compose: “It’s now &lt;temp&gt; degrees and &lt;condition&gt;.”</li>
-                  <li>Optional AI pass</li>
-                  <li><code>media_player.volume_set</code> → <code>!input current_change_volume_level</code></li>
-                  <li>Per-speaker delay + <code>tts.speak</code></li>
+                  <li>On weather state change → msg “It’s now &lt;temp&gt;° and &lt;cond&gt;.”</li>
+                  <li>Optional AI pass; set volume to <code>!input current_change_volume_level</code>; per-speaker delay + speak.</li>
                 </ol>
               </div>
-            </details>
 
-            <details>
-              <summary>Upcoming change</summary>
-              <div class="body">
+              <div class="ha-card">
+                <div class="ha-h"><strong>Upcoming change</strong></div>
                 <ol>
-                  <li>Hourly fetch → next precip that begins within <code>!input minutes_before_announce</code> if not precipitating now</li>
-                  <li>Speak: “&lt;rain/snow&gt; in about &lt;minutes&gt; minutes.”</li>
-                  <li>Optional AI pass</li>
-                  <li><code>media_player.volume_set</code> → <code>!input upcoming_change_volume_level</code></li>
-                  <li>Per-speaker delay + <code>tts.speak</code></li>
+                  <li>Hourly fetch → find next precip start in ≤ <code>!input minutes_before_announce</code> if not precipitating now.</li>
+                  <li>Msg “&lt;rain/snow&gt; in about &lt;minutes&gt; minutes.” → set volume to <code>!input upcoming_change_volume_level</code> → per-speaker delay + speak.</li>
                 </ol>
               </div>
-            </details>
 
-            <details>
-              <summary>Alarm webhook</summary>
-              <div class="body">
+              <div class="ha-card">
+                <div class="ha-h"><strong>Alarm webhook</strong></div>
                 <ol>
-                  <li>Daily + hourly fetch; personalize with <code>!input personal_name</code></li>
-                  <li>Optional AI pass; prefix “Good morning &lt;name&gt; …”</li>
-                  <li><code>media_player.volume_set</code> → <code>!input alarm_volume_level</code></li>
-                  <li>Per-speaker delay + <code>tts.speak</code></li>
+                  <li>Daily + hourly fetch → personalized greeting with <code>!input personal_name</code>.</li>
+                  <li>Optional AI pass; set volume to <code>!input alarm_volume_level</code>; per-speaker delay + speak.</li>
                 </ol>
-              </div>
-            </details>
-
-            <details>
-              <summary>Voice satellite</summary>
-              <div class="body">
-                <ol>
-                  <li>On phrase match in <code>!input conversation_command</code> build standard forecast text</li>
-                  <li>Optional AI pass</li>
-                  <li>Return text with <code>set_conversation_response</code></li>
-                </ol>
-              </div>
-            </details>
-          </div>
-
-          <!-- Variables -->
-          <div class="pane" id="p4">
-            <div class="grid">
-              <div class="row">
-                <strong>Blueprint inputs consumed</strong>
-                <div class="muted" style="margin-top:6px"><code>weather_entity</code>, <code>tts_engine</code>, <code>speakers</code>, <code>voice</code>, <code>volume_level</code>, <code>preroll_ms</code>, <code>use_ai_rewrite</code>, <code>ai_task_entity</code>, <code>ai_rewrite_prompt</code>, <code>enable_* switches</code>, <code>hour_pattern</code>, <code>minute_offset</code>, <code>start_time</code>, <code>end_time</code>, <code>days_of_week</code>, <code>precip_threshold</code>, <code>hours_ahead</code>, <code>minutes_before_announce</code>, <code>alarm_volume_level</code>, <code>personal_name</code>, <code>webhook_id</code>, <code>conversation_command</code></div>
-              </div>
-              <div class="row">
-                <strong>Runtime variables</strong>
-                <ul class="muted" style="margin:6px 0 0 18px">
-                  <li><code>d</code>, <code>h</code> → daily/hourly responses</li>
-                  <li><code>daily_list</code>, <code>hourly_list</code>, <code>hits</code>, <code>first_hit</code>, <code>hit_pp</code>, <code>hit_clock</code>, <code>precip_kind</code></li>
-                  <li><code>msg</code> → crafted text; <code>spoken</code> → final text after AI pass</li>
-                </ul>
               </div>
             </div>
           </div>
-        </div>
-        <p class="muted">Note: This mock is static and mirrors your YAML structure. Update this page when the blueprint changes.</p>
-      </section>
-      <!-- ======= /Automation Mock ======= -->
 
+          <!-- Variables tab -->
+          <div class="pane" id="pane-variables">
+            <div class="ha-card">
+              <div class="ha-h"><strong>Variables & example values</strong></div>
+              <table class="table">
+                <tr><th>Variable</th><th>Source</th><th>Meaning</th><th>Example</th></tr>
+
+                <tr class="row"><td><code>key</code></td><td>!input <code>weather_entity</code></td><td>Primary weather entity id</td><td><code>weather.openweathermap</code></td></tr>
+
+                <tr class="row"><td><code>d</code>, <code>h</code></td><td><code>weather.get_forecasts</code></td><td>Daily/hourly service responses</td><td><code>{ forecast: [...] }</code></td></tr>
+
+                <tr class="row"><td><code>now_hour</code></td><td><code>now().hour</code></td><td>Current hour 0-23</td><td><code>8</code></td></tr>
+
+                <tr class="row"><td><code>day_name</code></td><td><code>timestamp_custom('%A')</code></td><td>Day of week</td><td><code>Saturday</code></td></tr>
+
+                <tr class="row"><td><code>greeting</code></td><td>templated from <code>now_hour</code></td><td>Morning/Afternoon/Evening</td><td><code>Good morning</code></td></tr>
+
+                <tr class="row"><td><code>now_temp</code></td><td><code>state_attr(key,'temperature')</code></td><td>Current temp</td><td><code>57</code></td></tr>
+
+                <tr class="row"><td><code>now_hum</code></td><td><code>state_attr(key,'humidity')</code></td><td>Relative humidity %</td><td><code>62</code></td></tr>
+
+                <tr class="row"><td><code>now_cond_h</code></td><td><code>states(key)</code> normalized</td><td>Readable condition</td><td><code>partly cloudy</code></td></tr>
+
+                <tr class="row"><td><code>daily_list</code></td><td><code>d[key].forecast</code></td><td>Array of daily periods</td><td><code>[{ temperature: 63, templow: 49, ... }]</code></td></tr>
+
+                <tr class="row"><td><code>today</code></td><td><code>daily_list[0]</code></td><td>Today’s daily item</td><td><code>{ temperature: 63, templow: 49, condition:'partlycloudy' }</code></td></tr>
+
+                <tr class="row"><td><code>high</code></td><td><code>today.temperature</code></td><td>High °</td><td><code>63</code></td></tr>
+
+                <tr class="row"><td><code>low</code></td><td><code>today.templow/temperature_low</code></td><td>Low °</td><td><code>49</code></td></tr>
+
+                <tr class="row"><td><code>hourly_list</code></td><td><code>h[key].forecast</code></td><td>Array of next hours</td><td><code>[{ datetime:'2025-11-08T09:00:00+00:00', precipitation_probability:40, condition:'rain', ... }]</code></td></tr>
+
+                <tr class="row"><td><code>next_hours</code></td><td>slice of <code>hourly_list</code></td><td>Hours within <code>!input hours_ahead</code></td><td><code>first 24 items</code></td></tr>
+
+                <tr class="row"><td><code>hits</code></td><td>filter on <code>precipitation_probability ≥ !input precip_threshold</code></td><td>Candidate precip hours</td><td><code>[{..40% rain..}, …]</code></td></tr>
+
+                <tr class="row"><td><code>first_hit</code></td><td><code>hits[0]</code></td><td>Earliest candidate</td><td><code>{ datetime:'…09:00…', precipitation_probability:40 }</code></td></tr>
+
+                <tr class="row"><td><code>hit_pp</code></td><td><code>first_hit.precipitation_probability</code></td><td>Precip %</td><td><code>40</code></td></tr>
+
+                <tr class="row"><td><code>hit_clock</code></td><td>format of <code>first_hit.datetime</code></td><td>12-hour time</td><td><code>9 AM</code></td></tr>
+
+                <tr class="row"><td><code>hit_daypart</code></td><td>by hour number</td><td>this morning/afternoon/evening/overnight</td><td><code>this morning</code></td></tr>
+
+                <tr class="row"><td><code>precip_kind</code></td><td>contains “snow/sleet/hail/rain”</td><td>Human term</td><td><code>rain</code></td></tr>
+
+                <tr class="row"><td><code>msg</code></td><td>assembled text</td><td>Final base string</td><td><code>Good morning! Saturday's forecast. Right now…</code></td></tr>
+
+                <tr class="row"><td><code>spoken</code></td><td>AI or base</td><td>Text actually spoken</td><td><code>Good morning! Saturday’s forecast… 40% rain this morning around 9 AM.</code></td></tr>
+              </table>
+              <p class="muted">Examples assume: clear morning, first precip at 9 AM with 40%.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== Deep logic details ===== -->
+      <section id="logic" class="card">
+        <h2>Logic details</h2>
+        <h3>Message assembly</h3>
+        <ol>
+          <li><strong>Greeting + day</strong>: based on <code>now().hour</code> and <code>timestamp_custom('%A')</code>.</li>
+          <li><strong>Right now</strong>: condition → temperature → humidity if present.</li>
+          <li><strong>Today</strong>: “Expect &lt;today_cond_h&gt;” when today’s condition differs from “Right now,” then “High … Low …”.</li>
+          <li><strong>Precip window</strong>: scan <code>hourly_list[:!input hours_ahead]</code>; first hour with <code>precipitation_probability ≥ !input precip_threshold</code> becomes the callout, including daypart and <code>hit_clock</code>.</li>
+        </ol>
+
+        <h3>Upcoming change alert</h3>
+        <ul>
+          <li>Every 5 minutes: find next hour after <code>now()</code>. If it is precip and current <em>is not</em> precip, and minutes-to-start ≤ <code>!input minutes_before_announce</code>, speak a short alert.</li>
+        </ul>
+
+        <h3>AI rewrite</h3>
+        <ul>
+          <li>Optional. Only changes wording. Facts, numbers, and order must remain identical; prompt enforces it.</li>
+          <li>If AI is unavailable, the base <code>msg</code> is used.</li>
+        </ul>
+      </section>
+
+      <!-- ===== Webhook docs ===== -->
       <section id="webhook" class="card">
         <h2>Webhook alarm: Android & iOS</h2>
         <h3>Canonical URL format</h3>
@@ -367,57 +402,59 @@
 
         <div class="grid cols-2">
           <div>
-            <h3>Android (Shortcuts or Automation app)</h3>
+            <h3>Android (Shortcuts / Automate)</h3>
             <ol>
-              <li>Create a new shortcut/automation named <em>Weather Alarm</em>.</li>
-              <li>Add an HTTP <strong>POST</strong> action.</li>
-              <li>URL: use the canonical webhook URL above with your <code>webhook_id</code>.</li>
-              <li>Headers: none required when on local network.</li>
-              <li>Body: leave empty.</li>
-              <li>Save and run the shortcut to trigger the blueprint’s “Alarm webhook” path.</li>
+              <li>Create a shortcut named <em>Weather Alarm</em>.</li>
+              <li>Add HTTP <strong>POST</strong>.</li>
+              <li>URL: the webhook above using your <code>webhook_id</code>.</li>
+              <li>Headers: none on LAN. For remote, use your external URL.</li>
+              <li>Body: empty.</li>
+              <li>Run to trigger the “Alarm webhook” branch.</li>
             </ol>
-            <p class="muted">If you use Nabu Casa remote URL, replace host with your remote base URL.</p>
           </div>
           <div>
-            <h3>iOS (Shortcuts app)</h3>
+            <h3>iOS (Shortcuts)</h3>
             <ol>
-              <li>Open Shortcuts → “+” → <em>Add Action</em> → “Get Contents of URL”.</li>
+              <li>Shortcuts → “+” → <em>Add Action</em> → “Get Contents of URL”.</li>
               <li>Method: <strong>POST</strong>.</li>
-              <li>URL: <code>http://homeassistant.local:8123/api/webhook/&lt;WEBHOOK_ID_FROM_INPUT&gt;</code></li>
+              <li>URL: <code>http://homeassistant.local:8123/api/webhook/&lt;ID&gt;</code></li>
               <li>Request Body: <em>None</em>.</li>
-              <li>Optional: Add “Set Volume” before the request to adjust device volume.</li>
-              <li>Save as <em>Weather Alarm</em>. Run it to test.</li>
+              <li>Optional: Add “Set Volume” first.</li>
+              <li>Run to test.</li>
             </ol>
           </div>
         </div>
       </section>
 
+      <!-- ===== Troubleshooting ===== -->
       <section id="trouble" class="card">
         <h2>Troubleshooting</h2>
         <ul>
-          <li><strong>No audio:</strong> Confirm <code>speakers</code> includes at least one <code>media_player</code>. Increase <code>preroll_ms</code> if the first syllable is cut.</li>
-          <li><strong>No precip mention:</strong> Your hourly source may lack <code>precipitation_probability</code>. The line is omitted by design.</li>
-          <li><strong>AI errors:</strong> Turn off <code>use_ai_rewrite</code> to confirm base message. Check your <code>ai_task</code> entity.</li>
-          <li><strong>Voice phrases not responding:</strong> Ensure Conversation integration is enabled and phrases match lines in <code>conversation_command</code>.</li>
+          <li><strong>No audio:</strong> Ensure <code>speakers</code> includes at least one <code>media_player</code>. Increase <code>preroll_ms</code> if audio starts late.</li>
+          <li><strong>No precip line:</strong> Your hourly data may lack <code>precipitation_probability</code>. This is expected; the line is omitted.</li>
+          <li><strong>Voice not responding:</strong> Conversation integration must be enabled. Ensure phrases match lines in <code>conversation_command</code>.</li>
+          <li><strong>AI task fails:</strong> Disable <code>use_ai_rewrite</code> to confirm base messaging, then validate the <code>ai_task</code> entity.</li>
         </ul>
       </section>
 
+      <!-- ===== FAQ ===== -->
       <section id="faq" class="card">
         <h2>FAQ</h2>
         <details open>
           <summary>How do I schedule every 3 hours at minute 3?</summary>
-          <div class="body">Set <code>hour_pattern</code> to <code>/3</code> and <code>minute_offset</code> to <code>3</code>.</div>
+          <div class="muted">Set <code>hour_pattern</code> to <code>/3</code> and <code>minute_offset</code> to <code>3</code>.</div>
         </details>
         <details>
           <summary>How do I change the voice?</summary>
-          <div class="body">Set <code>voice</code> to a voice ID your TTS engine supports. Example: <code>en_US-carlin-high</code>.</div>
+          <div class="muted">Set <code>voice</code> to a valid voice for your TTS engine, e.g., <code>en_US-carlin-high</code>.</div>
         </details>
         <details>
           <summary>What’s the correct webhook URL?</summary>
-          <div class="body">Use <code>http://homeassistant.local:8123/api/webhook/&lt;WEBHOOK_ID_FROM_INPUT&gt;</code>. Replace the placeholder with your blueprint input.</div>
+          <div class="muted">Use <code>http://homeassistant.local:8123/api/webhook/&lt;WEBHOOK_ID_FROM_INPUT&gt;</code>. Replace the placeholder with your blueprint input.</div>
         </details>
       </section>
 
+      <!-- ===== Repo layout ===== -->
       <section id="folders" class="card">
         <h2>Repo layout</h2>
         <ul>
@@ -428,10 +465,100 @@
         </ul>
       </section>
 
-      <footer>© Weather — Forecast TTS (AI Optional). Pure HTML documentation. Editor-style mock uses CSS only.</footer>
+      <footer>© Weather — Forecast TTS (AI Optional). Clean dark UI. Editor-style mock with tabs. Search is real and client-side.</footer>
     </div>
   </main>
 </div>
 
+<!-- ===== Minimal JS for tabs + true search (no external deps) ===== -->
+<script>
+  // Tabs
+  const tabs = document.querySelectorAll('.hamock .tab');
+  const panes = {
+    triggers: document.getElementById('pane-triggers'),
+    conditions: document.getElementById('pane-conditions'),
+    actions: document.getElementById('pane-actions'),
+    variables: document.getElementById('pane-variables')
+  };
+  tabs.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      tabs.forEach(b=>b.classList.remove('active'));
+      Object.values(panes).forEach(p=>p.classList.remove('active'));
+      btn.classList.add('active');
+      panes[btn.dataset.tab].classList.add('active');
+    });
+  });
+
+  // Real client-side search with simple scoring + highlight
+  const q = document.getElementById('q');
+  const resultsBox = document.getElementById('results');
+  const sections = Array.from(document.querySelectorAll('section.card'));
+  function textOf(el){ return (el.textContent||'').replace(/\s+/g,' ').trim(); }
+  function clearHighlights(){
+    document.querySelectorAll('.highlight').forEach(n=>{
+      n.classList.remove('highlight');
+      n.innerHTML = n.innerHTML; // remove spans safely by reflow
+    });
+  }
+  function highlight(node, term){
+    if(!term) return;
+    const rx = new RegExp('('+term.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','ig');
+    node.querySelectorAll('p,li,div,td,summary').forEach(el=>{
+      const txt = el.textContent;
+      if(!txt || !rx.test(txt)) return;
+      el.innerHTML = txt.replace(rx,'<mark class="highlight">$1</mark>');
+    });
+  }
+  function score(text, terms){
+    let s = 0;
+    terms.forEach(t=>{
+      const re = new RegExp(t,'ig');
+      const m = text.match(re);
+      if(m) s += m.length;
+    });
+    return s;
+  }
+  function doSearch(val){
+    const term = val.trim();
+    resultsBox.innerHTML = '';
+    resultsBox.style.display = 'none';
+    clearHighlights();
+    if(!term) return;
+
+    const terms = term.split(/\s+/).filter(Boolean);
+    const hits = sections.map(sec=>{
+      const t = textOf(sec);
+      return {sec,score:score(t,terms),text:t};
+    }).filter(h=>h.score>0)
+      .sort((a,b)=>b.score-a.score).slice(0,12);
+
+    if(!hits.length) { resultsBox.style.display='block'; resultsBox.innerHTML = '<div class="res">No matches</div>'; return; }
+
+    resultsBox.style.display='block';
+    hits.forEach(h=>{
+      const id = h.sec.id || '';
+      const title = h.sec.querySelector('h2')?.textContent || 'Section';
+      const div = document.createElement('div');
+      div.className='res';
+      div.innerHTML = `<strong>${title}</strong><small>#${id}</small>`;
+      div.addEventListener('click', ()=>{
+        location.hash = '#'+id;
+        clearHighlights();
+        highlight(h.sec, term);
+        resultsBox.style.display='none';
+      });
+      resultsBox.appendChild(div);
+    });
+  }
+  q.addEventListener('keydown', e=>{
+    if(e.key==='Enter'){ doSearch(q.value); }
+  });
+  q.addEventListener('input', e=>{
+    if(!e.target.value){ resultsBox.style.display='none'; clearHighlights(); }
+  });
+  document.addEventListener('click', e=>{
+    if(!resultsBox.contains(e.target) && e.target!==q) resultsBox.style.display='none';
+  });
+</script>
 </body>
 </html>
