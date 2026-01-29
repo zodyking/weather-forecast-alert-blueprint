@@ -113,22 +113,22 @@ blueprint:
         hour_pattern:
           name: Hour Pattern for Time-Based
           description: Specifies the interval for time-based announcements (e.g., 'Hourly' for every hour).
-          default: /3
+          default: "/3"
           selector:
             select:
               options:
                 - label: Hourly
-                  value: /1
+                  value: "/1"
                 - label: Every 2 Hours
-                  value: /2
+                  value: "/2"
                 - label: Every 3 Hours
-                  value: /3
+                  value: "/3"
                 - label: Every 4 Hours
-                  value: /4
+                  value: "/4"
                 - label: Every 5 Hours
-                  value: /5
+                  value: "/5"
                 - label: Every 6 Hours
-                  value: /6
+                  value: "/6"
         minute_offset:
           name: Minute Offset
           description: The minute of the hour when the announcement should trigger (0-59).

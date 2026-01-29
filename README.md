@@ -5,8 +5,10 @@
 Home Assistant blueprint that speaks a concise forecast to one or more speakers on a schedule or on demand. Uses daily + hourly data, mentions first likely rain/snow window, and can optionally pass the message through an AI Task without changing facts.
 
 ## Import
-- One-click: `homeassistant://blueprint/import?url=https://raw.githubusercontent.com/zodyking/weather-forecast-alert-blueprint/refs/heads/main/weather-forecast.yaml`
+- **One-click (recommended):** `homeassistant://blueprint/import?url=https://raw.githubusercontent.com/zodyking/weather-forecast-alert-blueprint/refs/heads/main/weather-forecast.yaml`
 - Raw YAML: https://raw.githubusercontent.com/zodyking/weather-forecast-alert-blueprint/refs/heads/main/weather-forecast.yaml
+
+If you see a YAML error like *"mapping values are not allowed here"* or *"--tab-size-preference: 4;"* when pasting the blueprint, use the **one-click import link** above instead of copy-paste. Pasting into the HA editor can inject extra lines (e.g. from your editor) and break the YAML.
 
 ## Requirements
 - A `weather` entity that supports `weather.get_forecasts` for **daily** and **hourly** (e.g., OpenWeatherMap).
@@ -53,6 +55,7 @@ Use the `webhook_id` you set. No body required.
 - Production blueprint path: `/weather-forecast.yaml`.
 
 ## Troubleshooting
+- **"mapping values are not allowed here" / "--tab-size-preference: 4;"**: Import via the one-click URL above instead of pasting YAML; pasting can inject editor/browser content and break parsing.
 - No audio: verify `tts_engine` and `media_player` work via Developer Tools.
 - “Forecast not available.”: confirm your provider returns hourly + daily data.
 - Conversation not responding: enable the Conversation integration and match the phrase exactly.
