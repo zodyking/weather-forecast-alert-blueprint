@@ -581,8 +581,32 @@ action:
               hourly_list: "{{ h.get(key,{}).get('forecast',[]) }}"
               next_hours: "{{ hourly_list[:hours_ahead] if hourly_list else [] }}"
               current_time_12h: "{{ (as_timestamp(now()) | timestamp_custom('%I:%M %p', true)) | replace(' 0', ' ') }}"
-              opening_line: "The time is {{ current_time_12h }} and here is your weather forecast. "
-              current_segment: "{% set bits = [] %}{% if now_cond_h %}{% set bits = bits + [now_cond_h | capitalize] %}{% endif %}{% if now_temp is not none %}{% set bits = bits + [(now_temp | round(0)) ~ ' degrees'] %}{% endif %}{% if now_hum is not none %}{% set bits = bits + ['humidity ' ~ now_hum ~ '%'] %}{% endif %}{% set now_phrase = 'Current conditions: ' ~ (bits | join(', ')) ~ '. ' if bits | length > 0 else '' %}{% set day_bits = [] %}{% if high is not none %}{% set day_bits = day_bits + ['high ' ~ (high | round(0)) ~ ' degrees'] %}{% endif %}{% if low is not none %}{% set day_bits = day_bits + ['low ' ~ (low | round(0)) ~ ' degrees'] %}{% endif %}{{ now_phrase }}{% if day_bits | length > 0 %}Today: {{ day_bits | join(', ') }}. {% endif %}"
+              current_hour: "{{ now().hour }}"
+              greeting: >-
+                {% set h = current_hour | int %}
+                {% if h >= 5 and h < 12 %}Good morning{% elif h >= 12 and h < 17 %}Good afternoon{% elif h >= 17 and h < 21 %}Good evening{% else %}Good night{% endif %}
+              opening_line: "{{ greeting }}. It is {{ current_time_12h }}, and here is your weather forecast. "
+              current_segment: >-
+                {% set cond_phrase = '' %}
+                {% if now_cond_h %}
+                  {% set cond_phrase = 'We are looking at ' ~ (now_cond_h | lower) ~ ' conditions' %}
+                  {% if now_temp is not none %}
+                    {% set cond_phrase = cond_phrase ~ ' with a temperature of ' ~ (now_temp | round(0) | int) ~ ' degrees' %}
+                  {% endif %}
+                  {% if now_hum is not none %}
+                    {% set cond_phrase = cond_phrase ~ ' and humidity at ' ~ now_hum ~ ' percent' %}
+                  {% endif %}
+                  {% set cond_phrase = cond_phrase ~ '. ' %}
+                {% endif %}
+                {% set day_phrase = '' %}
+                {% if high is not none and low is not none %}
+                  {% set day_phrase = 'For today, we reach a high of ' ~ (high | round(0) | int) ~ ' degrees with a low of ' ~ (low | round(0) | int) ~ '. ' %}
+                {% elif high is not none %}
+                  {% set day_phrase = 'For today, we reach a high of ' ~ (high | round(0) | int) ~ ' degrees. ' %}
+                {% elif low is not none %}
+                  {% set day_phrase = 'For today, expect a low of ' ~ (low | round(0) | int) ~ ' degrees. ' %}
+                {% endif %}
+                {{ cond_phrase }}{{ day_phrase }}
               hourly_segments: >-
                 {% set now_ts = as_timestamp(now()) %}
                 {% set dominated = ['sunny', 'clear', 'clearnight', 'clear night', 'partlycloudy', 'partly cloudy', 'cloudy'] %}
@@ -605,27 +629,48 @@ action:
                     {% set is_dominated = h_cond_norm in dominated_norm %}
                     {% set is_precip = 'rain' in h_cond or 'snow' in h_cond or 'sleet' in h_cond or 'hail' in h_cond or 'storm' in h_cond or 'lightning' in h_cond or 'pour' in h_cond %}
                     {% set is_significant = is_precip or 'fog' in h_cond or 'wind' in h_cond %}
-                    {% set bits = [] %}
+                    {% set phrase = '' %}
                     {% if h.precipitation_probability is defined and h.precipitation_probability >= precip_threshold and is_precip %}
-                      {% set h_kind = 'snow' if 'snow' in h_cond else ('sleet' if 'sleet' in h_cond else ('hail' if 'hail' in h_cond else ('thunderstorm' if 'storm' in h_cond or 'lightning' in h_cond else 'rain'))) %}
-                      {% set bits = bits + [(h_kind | capitalize) ~ ' ' ~ (h.precipitation_probability | int) ~ '% chance'] %}
-                    {% endif %}
-                    {% if is_significant and not is_dominated and h_cond_norm != ns.last_cond %}
+                      {% set h_kind = 'snow' if 'snow' in h_cond else ('sleet' if 'sleet' in h_cond else ('hail' if 'hail' in h_cond else ('thunderstorms' if 'storm' in h_cond or 'lightning' in h_cond else 'rain'))) %}
+                      {% set phrase = 'expect ' ~ h_kind ~ ' around ' ~ h_clock ~ ' with a ' ~ (h.precipitation_probability | int) ~ ' percent chance' %}
+                    {% elif is_significant and not is_dominated and h_cond_norm != ns.last_cond %}
                       {% set cond_h = h_cond | replace('_',' ') | replace('-',' ') | replace('partlycloudy','partly cloudy') %}
-                      {% if bits | length == 0 %}
-                        {% set bits = bits + [cond_h | capitalize ~ ' expected'] %}
-                      {% endif %}
+                      {% set phrase = 'expect ' ~ cond_h ~ ' conditions around ' ~ h_clock %}
                       {% set ns.last_cond = h_cond_norm %}
                     {% endif %}
-                    {% if bits | length > 0 %}
-                      {% set phr = h_clock ~ ': ' ~ (bits | join(', ')) ~ '. ' %}
-                      {% set ns.parts = ns.parts + [phr] %}
+                    {% if phrase %}
+                      {% set ns.parts = ns.parts + [phrase] %}
                     {% endif %}
                   {% endif %}
                 {% endfor %}
-                {% if ns.parts | length > 0 %}Looking ahead: {{ ns.parts | join('') }}{% endif %}
-              daily_segments: "{% set ns = namespace(parts=[]) %}{% for day in (daily_list[1:1+daily_forecast_days] if daily_list is defined and daily_list|length > 1 else []) %}{% set day_name_str = 'Tomorrow' if loop.first else (as_datetime(day.datetime) | as_timestamp | timestamp_custom('%A', true) if day.datetime else '') %}{% set raw_cond = (day.condition or '') | lower %}{% set day_cond = raw_cond | replace('_',' ') | replace('-',' ') | replace('partlycloudy','partly cloudy') | replace('clearnight','clear night') %}{% set day_high = day.temperature | round(0) if day.temperature is defined and day.temperature is not none else '' %}{% set day_low = (day.templow or day.temperature_low) | round(0) if (day.templow or day.temperature_low) is defined and (day.templow or day.temperature_low) is not none else '' %}{% set phr = day_name_str ~ ', high ' ~ (day_high | string) ~ ' low ' ~ (day_low | string) ~ ', ' ~ day_cond ~ '. ' %}{% set ns.parts = ns.parts + [phr] %}{% endfor %}{{ ns.parts | join('') }}"
-              msg: "{% set body = (current_segment ~ hourly_segments ~ daily_segments) | trim %}{{ (opening_line ~ body) if body else 'The time is ' ~ current_time_12h ~ ' and here is your weather forecast. Forecast not available.' }}"
+                {% if ns.parts | length > 0 %}Heading into the next few hours, {{ ns.parts | join(', and ') }}. {% endif %}
+              daily_segments: >-
+                {% set ns = namespace(parts=[]) %}
+                {% for day in (daily_list[1:1+daily_forecast_days] if daily_list is defined and daily_list|length > 1 else []) %}
+                  {% set day_name_str = 'Tomorrow' if loop.first else (as_datetime(day.datetime) | as_timestamp | timestamp_custom('%A', true) if day.datetime else '') %}
+                  {% set raw_cond = (day.condition or '') | lower %}
+                  {% set day_cond = raw_cond | replace('_',' ') | replace('-',' ') | replace('partlycloudy','partly cloudy') | replace('clearnight','clear') %}
+                  {% set day_high = (day.temperature | round(0) | int) if day.temperature is defined and day.temperature is not none else none %}
+                  {% set day_low = ((day.templow or day.temperature_low) | round(0) | int) if (day.templow or day.temperature_low) is defined and (day.templow or day.temperature_low) is not none else none %}
+                  {% set temp_phrase = '' %}
+                  {% if day_high is not none and day_low is not none %}
+                    {% set temp_phrase = ' with a high of ' ~ day_high ~ ' and a low of ' ~ day_low %}
+                  {% elif day_high is not none %}
+                    {% set temp_phrase = ' with a high of ' ~ day_high %}
+                  {% elif day_low is not none %}
+                    {% set temp_phrase = ' with a low of ' ~ day_low %}
+                  {% endif %}
+                  {% if loop.first %}
+                    {% set phr = day_name_str ~ ' will be ' ~ day_cond ~ temp_phrase ~ '. ' %}
+                  {% elif loop.last %}
+                    {% set phr = 'By ' ~ day_name_str ~ ', expect ' ~ day_cond ~ ' conditions' ~ temp_phrase ~ '. ' %}
+                  {% else %}
+                    {% set phr = day_name_str ~ ' brings ' ~ day_cond ~ ' conditions' ~ temp_phrase ~ '. ' %}
+                  {% endif %}
+                  {% set ns.parts = ns.parts + [phr] %}
+                {% endfor %}
+                {% if ns.parts | length > 0 %}Looking ahead, {{ ns.parts | join('') }}{% endif %}
+              msg: "{% set body = (current_segment ~ hourly_segments ~ daily_segments) | trim %}{{ (opening_line ~ body) if body else greeting ~ '. It is ' ~ current_time_12h ~ '. Unfortunately, the weather forecast is not available at this time.' }}"
               i_ai: !input use_ai_rewrite
               i_ai_task: !input ai_task_entity
               i_ai_text: !input ai_rewrite_prompt
@@ -675,7 +720,9 @@ action:
               now_temp: "{{ trigger.to_state.attributes.temperature | round(0) }}"
               is_change: "{{ now_cond_raw != from_cond_raw }}"
               current_time_12h: "{{ (as_timestamp(now()) | timestamp_custom('%I:%M %p', true)) | replace(' 0', ' ') }}"
-              msg: "The time is {{ current_time_12h }} and here is your weather update. It is now {{ now_temp }} degrees and {{ now_cond_h }}."
+              current_hour: "{{ now().hour }}"
+              greeting: "{% set h = current_hour | int %}{% if h >= 5 and h < 12 %}Good morning{% elif h >= 12 and h < 17 %}Good afternoon{% elif h >= 17 and h < 21 %}Good evening{% else %}Good night{% endif %}"
+              msg: "{{ greeting }}. It is {{ current_time_12h }}, and we have a weather update for you. Conditions have changed to {{ now_cond_h }} with a temperature of {{ now_temp }} degrees."
               i_ai: !input use_ai_rewrite
               i_ai_task: !input ai_task_entity
               i_ai_text: !input ai_rewrite_prompt
@@ -741,7 +788,9 @@ action:
               should_announce: "{{ next_ts is not none and next_is_precip and not now_is_precip and 0 < min_to <= minutes_before_announce }}"
               precip_kind: "{% if 'snow' in next_cond_h %}snow{% elif 'sleet' in next_cond_h or 'hail' in next_cond_h %}mixed precipitation {% elif next_cond_h %}rain{% else %}precipitation{% endif %}"
               current_time_12h: "{{ (as_timestamp(now()) | timestamp_custom('%I:%M %p', true)) | replace(' 0', ' ') }}"
-              msg: "The time is {{ current_time_12h }} and here is your weather update. {{ precip_kind | capitalize }} expected in about {{ min_to }} minutes."
+              current_hour: "{{ now().hour }}"
+              greeting: "{% set h = current_hour | int %}{% if h >= 5 and h < 12 %}Good morning{% elif h >= 12 and h < 17 %}Good afternoon{% elif h >= 17 and h < 21 %}Good evening{% else %}Good night{% endif %}"
+              msg: "{{ greeting }}. It is {{ current_time_12h }}, and we have a weather alert for you. {{ precip_kind | capitalize }} is expected in about {{ min_to }} minutes, so you may want to prepare."
               i_ai: !input use_ai_rewrite
               i_ai_task: !input ai_task_entity
               i_ai_text: !input ai_rewrite_prompt
@@ -816,8 +865,8 @@ action:
               hit_ts: "{% set t = none %} {% if first_hit.get('datetime') %} {% set t = as_datetime(first_hit.get('datetime')) | as_timestamp %} {% endif %} {{ t }}"
               hit_clock: "{% set out = '' %} {% if hit_ts is not none %} {% set out = (hit_ts | timestamp_custom('%I %p', true)) | replace(' 0',' ') %} {% endif %} {{ out }}"
               precip_kind: "{% if 'snow' in hit_cond_h %}snow{% elif 'sleet' in hit_cond_h or 'hail' in hit_cond_h %}mixed precipitation {% elif hit_cond_h %}rain{% else %}precipitation{% endif %}"
-              precip_msg: "{% if hits | length > 0 and hit_pp > 0 %}expect {{ precip_kind }} later in the day around {{ hit_clock }} with a {{ hit_pp }}% chance.{% else %}{% endif %}"
-              msg: "The time is {{ current_time }} and here is your weather forecast. Currently {{ now_temp }} degrees and {{ now_cond_h }}. {{ precip_msg }} High {{ high }} degrees. Low {{ low }} degrees."
+              precip_msg: "{% if hits | length > 0 and hit_pp > 0 %} Looking ahead, expect {{ precip_kind }} around {{ hit_clock }} with a {{ hit_pp }} percent chance.{% else %}{% endif %}"
+              msg: "It is {{ current_time }}. We are looking at {{ now_cond_h }} conditions with a temperature of {{ now_temp }} degrees. For today, we reach a high of {{ high }} degrees with a low of {{ low }}.{{ precip_msg }}"
               i_ai: !input use_ai_rewrite
               i_ai_task: !input ai_task_entity
               i_ai_text: !input ai_rewrite_prompt
@@ -838,7 +887,7 @@ action:
               - variables:
                   spoken: "{{ msg }}"
           - variables:
-              spoken_final: "Good morning {{ name }}, {{ spoken }}"
+              spoken_final: "Good morning {{ name }}. {{ spoken }}"
           - action: media_player.volume_set
             target:
               entity_id: !input speakers
