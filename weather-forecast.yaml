@@ -600,7 +600,7 @@ action:
                 {% endif %}
                 {% set day_phrase = '' %}
                 {% if high is not none and low is not none %}
-                  {% set day_phrase = 'For today, we reach a high of ' ~ (high | round(0) | int) ~ ' degrees with a low of ' ~ (low | round(0) | int) ~ '. ' %}
+                  {% set day_phrase = 'For today, we reach a high of ' ~ (high | round(0) | int) ~ ' degrees and a low of ' ~ (low | round(0) | int) ~ ' degrees. ' %}
                 {% elif high is not none %}
                   {% set day_phrase = 'For today, we reach a high of ' ~ (high | round(0) | int) ~ ' degrees. ' %}
                 {% elif low is not none %}
@@ -654,11 +654,11 @@ action:
                   {% set day_low = ((day.templow or day.temperature_low) | round(0) | int) if (day.templow or day.temperature_low) is defined and (day.templow or day.temperature_low) is not none else none %}
                   {% set temp_phrase = '' %}
                   {% if day_high is not none and day_low is not none %}
-                    {% set temp_phrase = ' with a high of ' ~ day_high ~ ' and a low of ' ~ day_low %}
+                    {% set temp_phrase = ' with a high of ' ~ day_high ~ ' degrees and a low of ' ~ day_low ~ ' degrees' %}
                   {% elif day_high is not none %}
-                    {% set temp_phrase = ' with a high of ' ~ day_high %}
+                    {% set temp_phrase = ' with a high of ' ~ day_high ~ ' degrees' %}
                   {% elif day_low is not none %}
-                    {% set temp_phrase = ' with a low of ' ~ day_low %}
+                    {% set temp_phrase = ' with a low of ' ~ day_low ~ ' degrees' %}
                   {% endif %}
                   {% if loop.first %}
                     {% set phr = day_name_str ~ ' will be ' ~ day_cond ~ temp_phrase ~ '. ' %}
@@ -669,7 +669,7 @@ action:
                   {% endif %}
                   {% set ns.parts = ns.parts + [phr] %}
                 {% endfor %}
-                {% if ns.parts | length > 0 %}Looking ahead, {{ ns.parts | join('') }}{% endif %}
+                {% if ns.parts | length > 0 %}Now for your extended forecast. {{ ns.parts | join('') }}{% endif %}
               msg: "{% set body = (current_segment ~ hourly_segments ~ daily_segments) | trim %}{{ (opening_line ~ body) if body else greeting ~ '. It is ' ~ current_time_12h ~ '. Unfortunately, the weather forecast is not available at this time.' }}"
               i_ai: !input use_ai_rewrite
               i_ai_task: !input ai_task_entity
@@ -866,7 +866,7 @@ action:
               hit_clock: "{% set out = '' %} {% if hit_ts is not none %} {% set out = (hit_ts | timestamp_custom('%I %p', true)) | replace(' 0',' ') %} {% endif %} {{ out }}"
               precip_kind: "{% if 'snow' in hit_cond_h %}snow{% elif 'sleet' in hit_cond_h or 'hail' in hit_cond_h %}mixed precipitation {% elif hit_cond_h %}rain{% else %}precipitation{% endif %}"
               precip_msg: "{% if hits | length > 0 and hit_pp > 0 %} Looking ahead, expect {{ precip_kind }} around {{ hit_clock }} with a {{ hit_pp }} percent chance.{% else %}{% endif %}"
-              msg: "It is {{ current_time }}. We are looking at {{ now_cond_h }} conditions with a temperature of {{ now_temp }} degrees. For today, we reach a high of {{ high }} degrees with a low of {{ low }}.{{ precip_msg }}"
+              msg: "It is {{ current_time }}. We are looking at {{ now_cond_h }} conditions with a temperature of {{ now_temp }} degrees. For today, we reach a high of {{ high }} degrees and a low of {{ low }} degrees.{{ precip_msg }}"
               i_ai: !input use_ai_rewrite
               i_ai_task: !input ai_task_entity
               i_ai_text: !input ai_rewrite_prompt
