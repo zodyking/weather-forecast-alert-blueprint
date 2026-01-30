@@ -583,7 +583,47 @@ action:
               current_time_12h: "{{ (as_timestamp(now()) | timestamp_custom('%I:%M %p', true)) | replace(' 0', ' ') }}"
               opening_line: "The time is {{ current_time_12h }} and here is your weather forecast. "
               current_segment: "{% set bits = [] %}{% if now_cond_h %}{% set bits = bits + [now_cond_h | capitalize] %}{% endif %}{% if now_temp is not none %}{% set bits = bits + [(now_temp | round(0)) ~ ' degrees'] %}{% endif %}{% if now_hum is not none %}{% set bits = bits + ['humidity ' ~ now_hum ~ '%'] %}{% endif %}{% set now_phrase = 'Current conditions: ' ~ (bits | join(', ')) ~ '. ' if bits | length > 0 else '' %}{% set day_bits = [] %}{% if high is not none %}{% set day_bits = day_bits + ['high ' ~ (high | round(0)) ~ ' degrees'] %}{% endif %}{% if low is not none %}{% set day_bits = day_bits + ['low ' ~ (low | round(0)) ~ ' degrees'] %}{% endif %}{{ now_phrase }}{% if day_bits | length > 0 %}Today: {{ day_bits | join(', ') }}. {% endif %}"
-              hourly_segments: "{% set ns_temp = namespace(lst=[]) %}{% for ho in (next_hours if next_hours is defined and next_hours else []) %}{% if ho.temperature is defined and ho.temperature is not none %}{% set ns_temp.lst = ns_temp.lst + [ho] %}{% endif %}{% endfor %}{% set temp_sorted = (ns_temp.lst | sort(attribute='temperature')) | list %}{% set max_temp_item = temp_sorted[-1] if (temp_sorted | length > 0) else none %}{% set min_temp_item = temp_sorted[0] if (temp_sorted | length > 0) else none %}{% set day_swing = ((max_temp_item.temperature | float) - (min_temp_item.temperature | float)) | abs | round(0) if (max_temp_item and min_temp_item) else 0 %}{% set ns = namespace(parts=[]) %}{% for h in (next_hours if next_hours is defined and next_hours else []) %}{% set idx = loop.index0 %}{% set prev_h = next_hours[idx - 1] if idx > 0 else none %}{% set prev_cond_norm = (states(key) or '') | lower | replace('_',' ') if prev_h is none else (prev_h.condition or '') | lower | replace('_',' ') %}{% set h_ts = as_datetime(h.datetime) | as_timestamp if h.datetime else none %}{% set h_clock = (h_ts | timestamp_custom('%I %p', true) | replace(' 0',' ')) if h_ts is not none else '' %}{% set bits = [] %}{% if h.precipitation_probability is defined and h.precipitation_probability >= precip_threshold %}{% set h_cond = (h.condition or '') | lower %}{% set h_kind = 'snow' if 'snow' in h_cond else ('mixed precipitation' if 'sleet' in h_cond or 'hail' in h_cond else ('rain' if h_cond else 'precipitation')) %}{% set bits = bits + [(h_kind | capitalize) ~ ' expected ' ~ (h.precipitation_probability | int) ~ '% chance'] %}{% endif %}{% set h_cond_norm = (h.condition or '') | lower | replace('_',' ') %}{% if h_cond_norm != prev_cond_norm %}{% set raw = (h.condition or '') | lower %}{% set cond_h = raw | replace('_',' ') | replace('-',' ') | replace('partlycloudy','partly cloudy') | replace('clearnight','clear night') %}{% set bits = bits + [cond_h | capitalize] %}{% endif %}{% if max_temp_item is not none and min_temp_item is not none and day_swing >= temp_change_threshold %}{% if h.datetime == max_temp_item.datetime %}{% set bits = bits + ['high around ' ~ (max_temp_item.temperature | round(0)) ~ ' degrees'] %}{% elif h.datetime == min_temp_item.datetime and max_temp_item.datetime != min_temp_item.datetime %}{% set bits = bits + ['low around ' ~ (min_temp_item.temperature | round(0)) ~ ' degrees'] %}{% endif %}{% endif %}{% if bits | length > 0 and ns.parts | length < hourly_segments_count %}{% set phr = 'By ' ~ h_clock ~ ': ' ~ (bits | join(', ')) ~ '. ' %}{% set ns.parts = ns.parts + [phr] %}{% endif %}{% endfor %}{{ ns.parts | join('') }}"
+              hourly_segments: >-
+                {% set now_ts = as_timestamp(now()) %}
+                {% set dominated = ['sunny', 'clear', 'clearnight', 'clear night', 'partlycloudy', 'partly cloudy', 'cloudy'] %}
+                {% set dominated_norm = dominated | map('lower') | map('replace', ' ', '') | list %}
+                {% set future_hours = [] %}
+                {% for ho in (next_hours if next_hours is defined and next_hours else []) %}
+                  {% set ho_ts = as_datetime(ho.datetime) | as_timestamp if ho.datetime else 0 %}
+                  {% if ho_ts > now_ts %}
+                    {% set future_hours = future_hours + [ho] %}
+                  {% endif %}
+                {% endfor %}
+                {% set ns = namespace(parts=[], last_cond='') %}
+                {% for h in future_hours %}
+                  {% if ns.parts | length >= hourly_segments_count %}
+                  {% else %}
+                    {% set h_ts = as_datetime(h.datetime) | as_timestamp if h.datetime else none %}
+                    {% set h_clock = (h_ts | timestamp_custom('%I %p', true) | replace(' 0',' ')) if h_ts is not none else '' %}
+                    {% set h_cond = (h.condition or '') | lower %}
+                    {% set h_cond_norm = h_cond | replace('_','') | replace(' ','') | replace('-','') %}
+                    {% set is_dominated = h_cond_norm in dominated_norm %}
+                    {% set is_precip = 'rain' in h_cond or 'snow' in h_cond or 'sleet' in h_cond or 'hail' in h_cond or 'storm' in h_cond or 'lightning' in h_cond or 'pour' in h_cond %}
+                    {% set is_significant = is_precip or 'fog' in h_cond or 'wind' in h_cond %}
+                    {% set bits = [] %}
+                    {% if h.precipitation_probability is defined and h.precipitation_probability >= precip_threshold and is_precip %}
+                      {% set h_kind = 'snow' if 'snow' in h_cond else ('sleet' if 'sleet' in h_cond else ('hail' if 'hail' in h_cond else ('thunderstorm' if 'storm' in h_cond or 'lightning' in h_cond else 'rain'))) %}
+                      {% set bits = bits + [(h_kind | capitalize) ~ ' ' ~ (h.precipitation_probability | int) ~ '% chance'] %}
+                    {% endif %}
+                    {% if is_significant and not is_dominated and h_cond_norm != ns.last_cond %}
+                      {% set cond_h = h_cond | replace('_',' ') | replace('-',' ') | replace('partlycloudy','partly cloudy') %}
+                      {% if bits | length == 0 %}
+                        {% set bits = bits + [cond_h | capitalize ~ ' expected'] %}
+                      {% endif %}
+                      {% set ns.last_cond = h_cond_norm %}
+                    {% endif %}
+                    {% if bits | length > 0 %}
+                      {% set phr = h_clock ~ ': ' ~ (bits | join(', ')) ~ '. ' %}
+                      {% set ns.parts = ns.parts + [phr] %}
+                    {% endif %}
+                  {% endif %}
+                {% endfor %}
+                {% if ns.parts | length > 0 %}Looking ahead: {{ ns.parts | join('') }}{% endif %}
               daily_segments: "{% set ns = namespace(parts=[]) %}{% for day in (daily_list[1:1+daily_forecast_days] if daily_list is defined and daily_list|length > 1 else []) %}{% set day_name_str = 'Tomorrow' if loop.first else (as_datetime(day.datetime) | as_timestamp | timestamp_custom('%A', true) if day.datetime else '') %}{% set raw_cond = (day.condition or '') | lower %}{% set day_cond = raw_cond | replace('_',' ') | replace('-',' ') | replace('partlycloudy','partly cloudy') | replace('clearnight','clear night') %}{% set day_high = day.temperature | round(0) if day.temperature is defined and day.temperature is not none else '' %}{% set day_low = (day.templow or day.temperature_low) | round(0) if (day.templow or day.temperature_low) is defined and (day.templow or day.temperature_low) is not none else '' %}{% set phr = day_name_str ~ ', high ' ~ (day_high | string) ~ ' low ' ~ (day_low | string) ~ ', ' ~ day_cond ~ '. ' %}{% set ns.parts = ns.parts + [phr] %}{% endfor %}{{ ns.parts | join('') }}"
               msg: "{% set body = (current_segment ~ hourly_segments ~ daily_segments) | trim %}{{ (opening_line ~ body) if body else 'The time is ' ~ current_time_12h ~ ' and here is your weather forecast. Forecast not available.' }}"
               i_ai: !input use_ai_rewrite
